@@ -21,10 +21,6 @@
         </select>
     </div>
     <div class="col-md-2">
-        <label class="form-label">Delivery Date</label>
-        <input type="date" name="date" value="{{ request.args.get('date', '') }}" class="form-control">
-    </div>
-    <div class="col-md-2">
         <label class="form-label">Completed</label>
         <select name="completed" class="form-select">
             <option value="" {% if not request.args.get('completed') %}selected{% endif %}>Any</option>
@@ -76,7 +72,6 @@
                     <th>Coating</th>
                     <th>Design</th>
                     <th>Size</th>
-                    <th>Delivery</th>
                     <th>Completed</th>
                     <th>Actions</th>
                 </tr>
@@ -86,9 +81,7 @@
                 <tr>
                     <td>{{ order.id }}</td>
                     <td>
-                        <span data-bs-toggle="tooltip" data-bs-title="Resin: {{ order.resin_amount }}, CPW: {{ order.cpw_amount }}, DPP: {{ order.dpp_amount }}">
-                            {{ order.client_name }}
-                        </span>
+                        {{ order.client_name }}
                     </td>
                     <td>{{ order.quantity_kgs }}</td>
                     <td>{{ order.machine_type }}</td>
@@ -96,7 +89,6 @@
                     <td>{{ order.coating_type or '-' }}</td>
                     <td>{{ order.design or '-' }}</td>
                     <td>{{ order.size_inches }}</td>
-                    <td>{{ order.expected_delivery }}</td>
                     <td>
                         {% if order.completed %}
                             <span class="badge bg-success">Yes</span>

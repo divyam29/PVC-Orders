@@ -14,6 +14,8 @@ DAY_SHIFT_HOURS = 11
 NIGHT_SHIFT_HOURS = 11
 
 BRAIDED_RATE_BY_SIZE = {
+    "0.25": 45.0,
+    "1.25": 95.0,
     "1/2": 45.0,
     '1/2"': 45.0,
     "6mm": 45.0,
@@ -167,17 +169,15 @@ def build_production_schedule(orders: List[Order], *_, **__):
                         break
                     key = material_key(next_item)
                     if not machine_plan["batches"] or machine_plan["batches"][-1]["material_key"] != key:
-                        machine_plan["batches"].append({"material_key": key, "orders": []})
+                        machine_plan["batches"].append({"machine": machine, "material_key": key, "orders": []})
                     alloc = min(remaining[next_item.id], capacity_kgs)
-                    alloc = round(alloc)
-                    if alloc <= 0:
+                    if alloc <= 1e-9:
                         break
-                    if alloc > remaining[next_item.id]:
+                    if alloc > remaining[next_item.id] - 1e-9:
                         alloc = remaining[next_item.id]
-                    alloc = float(round(alloc))
-                    machine_plan["batches"][-1]["orders"].append({"item": next_item, "order": getattr(next_item, "order", None), "kgs": alloc})
+                    machine_plan["batches"][-1]["orders"].append({"item": next_item, "order": getattr(next_item, "order", None), "kgs": float(alloc)})
                     remaining[next_item.id] -= alloc
-                    if remaining[next_item.id] < 0.5:
+                    if remaining[next_item.id] < 1e-6:
                         remaining[next_item.id] = 0.0
                     hours_left -= alloc / rate
                     shift_plan["total_kgs"] += alloc

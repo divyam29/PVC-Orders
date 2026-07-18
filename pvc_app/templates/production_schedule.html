@@ -40,7 +40,8 @@
                       <tbody>
                         {% for batch in machine.batches %}
                           {% for al in batch.orders %}
-                            {% set o = al.order %}
+                            {% set item = al.item if al.item is defined else al.order %}
+                            {% set parent = item.order if item.order is defined else item %}
                             <tr>
                               {% if loop.first %}
                                 <td rowspan="{{ batch.orders|length }}" class="align-middle">
@@ -48,13 +49,13 @@
                                   <div class="small mt-1">{{ mk_label(batch.material_key) }}</div>
                                 </td>
                               {% endif %}
-                              <td>#{{ o.id }}</td>
-                              <td>{{ o.client_name }}</td>
-                              <td>{{ o.size_inches }}</td>
+                              <td>#{{ item.id }}</td>
+                              <td>{{ parent.client_name }}</td>
+                              <td>{{ item.size_inches }}</td>
                               <td>{{ "%.2f"|format(al.kgs) }}</td>
-                              <td>{{ o.expected_delivery }}</td>
+                              <td>{{ item.expected_delivery }}</td>
                               <td>
-                                {% set late = summary[o.id]['late'] %}
+                                {% set late = summary.get(item.id, {}).get('late', false) %}
                                 {% if late %}
                                   <span class="badge bg-danger">Late</span>
                                 {% else %}

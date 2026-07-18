@@ -1,4 +1,5 @@
 from datetime import datetime
+from datetime import date, timedelta
 from flask import Blueprint, render_template, request, redirect, url_for
 from .extensions import db
 from .models import Order, OrderLine, Design
@@ -18,6 +19,13 @@ def _auto_machine_for_line(pipe_type: str, preferred_machine: str | None, size_i
     return preferred_machine or "fresh_garden"
 
 
+def _auto_deadline(pipe_type: str, size_inches: str, quantity_kgs: float) -> date:
+    days = 5
+    if (pipe_type or "").lower() == "braided" and float(quantity_kgs) > 500:
+        days = 6
+    return datetime.now().date() + timedelta(days=days)
+
+
 def _parse_lines(form):
     rows = []
     line_count = int(form.get("line_count", 0) or 0)
@@ -25,32 +33,62 @@ def _parse_lines(form):
         pipe_type = (form.get(f"pipe_type_{idx}") or "").strip()
         if not pipe_type:
             continue
-        size_inches = (form.get(f"size_inches_{idx}") or "").strip()
-        quantity_kgs = float(form.get(f"quantity_kgs_{idx}") or 0)
-        if quantity_kgs <= 0:
-            continue
-        machine_type = _auto_machine_for_line(pipe_type, form.get(f"machine_type_{idx}"), size_inches)
-        coating_type = (form.get(f"coating_type_{idx}") or "").strip() or None
-        design = (form.get(f"design_{idx}") or "").strip() or None
         color = (form.get(f"color_{idx}") or "").strip()
-        resin_amount = float(form.get(f"resin_amount_{idx}") or 0)
-        cpw_amount = float(form.get(f"cpw_amount_{idx}") or 0)
-        dpp_amount = float(form.get(f"dpp_amount_{idx}") or 0)
-        expected_delivery = datetime.strptime(form.get(f"expected_delivery_{idx}"), "%Y-%m-%d").date()
-        rows.append({
-            "pipe_type": pipe_type,
-            "machine_type": machine_type,
-            "color": color,
-            "coating_type": coating_type,
-            "design": design,
-            "resin_amount": resin_amount,
-            "cpw_amount": cpw_amount,
-            "dpp_amount": dpp_amount,
-            "size_inches": size_inches,
-            "quantity_kgs": quantity_kgs,
-            "expected_delivery": expected_delivery,
-        })
+        machine_type = (form.get(f"machine_type_{idx}") or "").strip() or "fresh_garden"
+        coating_type = (form.get(f"coating_type_{idx}") or "").strip() or "Without Coating"
+        design = (form.get(f"design_{idx}") or "").strip() or None
+        sub_count = int(form.get(f"sub_count_{idx}", 0) or 0)
+        for sub_idx in range(sub_count):
+            size_inches = (form.get(f"size_inches_{idx}_{sub_idx}") or "").strip()
+            quantity_pcs = int(float(form.get(f"quantity_kgs_{idx}_{sub_idx}") or 0))
+            if quantity_pcs <= 0:
+                continue
+            length = (form.get(f"length_{idx}_{sub_idx}") or "").strip() or None
+            weight_per_piece = float(form.get(f"bundle_weight_{idx}_{sub_idx}") or 0)
+            effective_machine = machine_type
+            if pipe_type.lower() == "braided":
+                effective_machine = _auto_machine_for_line(pipe_type, None, size_inches)
+                coating_type = None
+            rows.append({
+                "pipe_type": pipe_type,
+                "machine_type": effective_machine,
+                "color": color,
+                "length": length,
+                "coating_type": coating_type,
+                "design": design,
+                "resin_amount": 0,
+                "cpw_amount": 0,
+                "dpp_amount": 0,
+                "size_inches": size_inches,
+                "quantity_pcs": quantity_pcs,
+                "weight_per_piece_kg": weight_per_piece,
+                "quantity_kgs": quantity_pcs * weight_per_piece,
+                "expected_delivery": _auto_deadline(pipe_type, size_inches, quantity_pcs * weight_per_piece),
+            })
     return rows
+
+
+def _order_lines_payload(order: Order):
+    groups = {}
+    for idx, line in enumerate(order.lines):
+        group = groups.setdefault(
+            (line.pipe_type, line.color, line.machine_type, line.coating_type or "", line.design or ""),
+            {
+                "pipe_type": line.pipe_type,
+                "color": line.color,
+                "machine_type": line.machine_type,
+                "coating_type": line.coating_type or "Without Coating",
+                "design": line.design or "",
+                "subrows": [],
+            },
+        )
+        group["subrows"].append({
+            "idx": idx,
+            "size_inches": line.size_inches,
+            "quantity_kgs": line.quantity_kgs,
+            "length": line.length or "",
+        })
+    return list(groups.values())
 
 
 @bp.route("/")
@@ -103,11 +141,7 @@ def view_orders():
         "color": Order.color,
         "coating_type": Order.coating_type,
         "design": Order.design,
-        "resin_amount": Order.resin_amount,
-        "cpw_amount": Order.cpw_amount,
-        "dpp_amount": Order.dpp_amount,
         "size_inches": Order.size_inches,
-        "expected_delivery": Order.expected_delivery,
         "completed": Order.completed,
     }
 
@@ -118,12 +152,6 @@ def view_orders():
         numeric_fields = {"quantity_kgs", "resin_amount", "cpw_amount", "dpp_amount", "id"}
         if field in string_fields:
             query = query.filter(col.ilike(f"%{value}%"))
-        elif field == "expected_delivery":
-            try:
-                dt = datetime.strptime(value, "%Y-%m-%d").date()
-                query = query.filter(col == dt)
-            except ValueError:
-                pass
         elif field == "completed":
             if value.lower() in ("true", "false"):
                 query = query.filter(col == (value.lower() == "true"))
@@ -157,7 +185,6 @@ def view_orders():
         ("coating_type", "Coating Type"),
         ("design", "Design"),
         ("size_inches", "Size"),
-        ("expected_delivery", "Delivery Date"),
         ("completed", "Completed"),
     ]
     any_fields = [
@@ -168,10 +195,6 @@ def view_orders():
         ("design", "Design"),
         ("size_inches", "Size"),
         ("quantity_kgs", "Quantity (kgs)"),
-        ("resin_amount", "Resin"),
-        ("cpw_amount", "CPW"),
-        ("dpp_amount", "DPP"),
-        ("expected_delivery", "Delivery Date"),
         ("completed", "Completed"),
         ("id", "ID"),
     ]
@@ -201,9 +224,9 @@ def add_order():
             color=lines[0]["color"] if lines else "",
             coating_type=lines[0]["coating_type"] if lines else None,
             design=lines[0]["design"] if lines else None,
-            resin_amount=sum(line["resin_amount"] for line in lines),
-            cpw_amount=sum(line["cpw_amount"] for line in lines),
-            dpp_amount=sum(line["dpp_amount"] for line in lines),
+            resin_amount=0,
+            cpw_amount=0,
+            dpp_amount=0,
             size_inches=lines[0]["size_inches"] if lines else SIZES[0],
             expected_delivery=min((line["expected_delivery"] for line in lines), default=datetime.now().date()),
             completed="completed" in request.form,
@@ -217,6 +240,7 @@ def add_order():
     return render_template(
         "add_order.html",
         coating_designs=existing_designs_by_coating(Design.query.all()),
+        sizes=SIZES,
     )
 
 
@@ -236,9 +260,9 @@ def edit_order(order_id):
         order.color = lines[0]["color"] if lines else ""
         order.coating_type = lines[0]["coating_type"] if lines else None
         order.design = lines[0]["design"] if lines else None
-        order.resin_amount = sum(line["resin_amount"] for line in lines)
-        order.cpw_amount = sum(line["cpw_amount"] for line in lines)
-        order.dpp_amount = sum(line["dpp_amount"] for line in lines)
+        order.resin_amount = 0
+        order.cpw_amount = 0
+        order.dpp_amount = 0
         order.size_inches = lines[0]["size_inches"] if lines else SIZES[0]
         order.expected_delivery = min((line["expected_delivery"] for line in lines), default=datetime.now().date())
         order.completed = "completed" in request.form
@@ -251,6 +275,8 @@ def edit_order(order_id):
         "edit_order.html",
         order=order,
         coating_designs=existing_designs_by_coating(Design.query.all()),
+        sizes=SIZES,
+        lines=_order_lines_payload(order),
     )
 
 

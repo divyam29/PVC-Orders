@@ -55,6 +55,15 @@ def _sync_sqlite_schema():
     if "design" not in columns:
         alterations.append("ALTER TABLE \"order\" ADD COLUMN design VARCHAR(120)")
 
+    if "order_line" in existing_tables:
+        line_columns = {col["name"] for col in inspector.get_columns("order_line")}
+        if "length" not in line_columns:
+            alterations.append("ALTER TABLE order_line ADD COLUMN length VARCHAR(50)")
+        if "quantity_pcs" not in line_columns:
+            alterations.append("ALTER TABLE order_line ADD COLUMN quantity_pcs INTEGER DEFAULT 0 NOT NULL")
+        if "weight_per_piece_kg" not in line_columns:
+            alterations.append("ALTER TABLE order_line ADD COLUMN weight_per_piece_kg FLOAT DEFAULT 0 NOT NULL")
+
     with db.engine.begin() as conn:
         for stmt in alterations:
             conn.execute(text(stmt))

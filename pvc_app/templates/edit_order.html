@@ -1,106 +1,186 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="utility-bar"><div class="title">Edit Order #{{ order.id }}</div></div>
-
 <div class="card p-4">
-  <form method="POST" class="row g-3">
-    <div class="col-md-6">
-      <label class="form-label">Client Name</label>
-      <input type="text" name="client_name" value="{{ order.client_name }}" class="form-control" required>
-    </div>
-
-    <div class="col-md-6">
-      <label class="form-label">Quantity (kgs)</label>
-      <input type="number" step="0.01" name="quantity_kgs" value="{{ order.quantity_kgs }}" class="form-control" required>
-    </div>
-
-    <div class="col-md-6">
-      <label class="form-label">Color</label>
-      <input type="text" name="color" value="{{ order.color }}" class="form-control" required>
-    </div>
-
-    <div class="col-md-6">
-      <label class="form-label">Machine</label>
-      <select name="machine_type" class="form-select" required>
-        {% for value, label in [
-          ("fresh_garden", "Fresh PVC Garden Pipe Machine"),
-          ("recycled_garden", "Recycled PVC Garden Pipe Machine"),
-          ("braided_1", "Braided PVC Pipe Machine 1"),
-          ("braided_2", "Braided PVC Pipe Machine 2"),
-        ] %}
-          <option value="{{ value }}" {% if order.machine_type == value %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <div class="col-md-6">
-      <label class="form-label">Coating Type</label>
-      <select name="coating_type" id="coatingType" class="form-select">
-        <option value="" {% if not order.coating_type %}selected{% endif %}>None / Braided</option>
-        {% for value in ["Without Coating", "Single Coating", "Double Coating"] %}
-          <option value="{{ value }}" {% if order.coating_type == value %}selected{% endif %}>{{ value }}</option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <div class="col-md-6">
-      <label class="form-label">Design</label>
-      <input type="text" name="design" id="designInput" value="{{ order.design or '' }}" class="form-control" list="designOptions" placeholder="Select or type a design">
-      <datalist id="designOptions"></datalist>
-      <small class="form-text">Typing a new design will save it automatically for the selected coating type.</small>
-    </div>
-
-    <div class="col-md-2">
-      <label class="form-label">Resin</label>
-      <input type="number" step="0.01" name="resin_amount" value="{{ order.resin_amount }}" class="form-control" required>
-    </div>
-    <div class="col-md-2">
-      <label class="form-label">CPW</label>
-      <input type="number" step="0.01" name="cpw_amount" value="{{ order.cpw_amount }}" class="form-control" required>
-    </div>
-    <div class="col-md-2">
-      <label class="form-label">DPP</label>
-      <input type="number" step="0.01" name="dpp_amount" value="{{ order.dpp_amount }}" class="form-control" required>
-    </div>
-
-    <div class="col-md-4">
-      <label class="form-label">Size (inches)</label>
-      <select name="size_inches" class="form-select" required>
-        {% for s in ["0.25", "0.5", "0.75", "1", "1.25"] %}
-          <option value="{{ s }}" {% if order.size_inches == s %}selected{% endif %}>{{ s }}</option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <div class="col-md-4">
-      <label class="form-label">Expected Delivery</label>
-      <input type="date" name="expected_delivery" value="{{ order.expected_delivery }}" class="form-control" required>
-    </div>
-
-    <div class="col-md-4 d-flex align-items-end gap-2">
-      <div class="form-check">
-        <input class="form-check-input" type="checkbox" name="completed" id="completedCheck" {% if order.completed %}checked{% endif %}>
-        <label class="form-check-label" for="completedCheck">Completed</label>
+  <form method="POST" id="orderForm">
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <label class="form-label">Client Name</label>
+        <input type="text" name="client_name" class="form-control" value="{{ order.client_name }}" required>
       </div>
-      <div class="ms-auto">
-        <a href="{{ url_for('main.view_orders') }}" class="btn btn-secondary">Cancel</a>
-        <button type="submit" class="btn btn-primary">Save Changes</button>
+      <div class="col-md-6 d-flex align-items-end justify-content-end">
+        <button type="button" class="btn btn-secondary" id="addOrderTypeBtn">Add Order Type</button>
       </div>
+    </div>
+    <input type="hidden" name="line_count" id="lineCount" value="0">
+    <div id="orderTypeRows"></div>
+    <div class="d-flex justify-content-end gap-2 mt-3">
+      <a href="{{ url_for('main.view_orders') }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">Save Changes</button>
     </div>
   </form>
 </div>
+
+<template id="orderTypeTemplate">
+  <div class="border rounded p-3 mb-4 order-type-row">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <strong>Order Type <span class="order-index"></span></strong>
+      <button type="button" class="btn btn-sm btn-outline-danger remove-order-type">Remove</button>
+    </div>
+    <div class="row g-3 mb-3">
+      <div class="col-md-3">
+        <label class="form-label">Pipe Type</label>
+        <select class="form-select pipe-type" name="pipe_type_0" required>
+          <option value="garden">Garden</option>
+          <option value="braided">Braided</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Color</label>
+        <input type="text" class="form-control color-field" name="color_0" required>
+      </div>
+      <div class="col-md-3 garden-only">
+        <label class="form-label">Machine</label>
+        <select class="form-select machine-type" name="machine_type_0">
+          <option value="fresh_garden">Fresh PVC Garden Pipe Machine</option>
+          <option value="recycled_garden">Recycled PVC Garden Pipe Machine</option>
+        </select>
+      </div>
+      <div class="col-md-3 garden-only">
+        <label class="form-label">Coating Type</label>
+        <select class="form-select coating-type" name="coating_type_0">
+          <option value="Without Coating">Without Coating</option>
+          <option value="Single Coating">Single Coating</option>
+          <option value="Double Coating">Double Coating</option>
+        </select>
+      </div>
+      <div class="col-md-3 garden-only">
+        <label class="form-label">Design</label>
+        <input type="text" class="form-control design-field" name="design_0" list="designOptions_0">
+        <datalist id="designOptions_0"></datalist>
+      </div>
+    </div>
+    <input type="hidden" name="sub_count_0" value="1" class="sub-count">
+    <div class="subrows"></div>
+    <button type="button" class="btn btn-sm btn-secondary add-subrow-btn mt-2">Add Size Row</button>
+  </div>
+</template>
+
+<template id="subrowTemplate">
+  <div class="row g-3 align-items-end subrow mb-2">
+    <div class="col-md-3">
+      <label class="form-label">Size</label>
+      <select class="form-select size-field" name="size_inches_0_0" required>
+        {% for s in sizes %}
+          <option value="{{ s }}">{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Quantity (no of pcs)</label>
+      <input type="number" step="1" class="form-control qty-field" name="quantity_kgs_0_0" required>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Weight per bundle (kgs)</label>
+      <input type="number" step="0.01" class="form-control weight-field" name="bundle_weight_0_0">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Length per bundle (meters)</label>
+      <input type="text" class="form-control length-field" name="length_0_0" placeholder="e.g. 30m">
+    </div>
+  </div>
+</template>
+
 <script>
   window.COATING_DESIGNS = {{ coating_designs|tojson }};
-  (function () {
-    const coating = document.getElementById("coatingType");
-    const list = document.getElementById("designOptions");
-    function refresh() {
-      const selected = coating.value || "";
-      const options = window.COATING_DESIGNS[selected] || [];
-      list.innerHTML = options.map(v => `<option value="${v}"></option>`).join("");
+  window.EXISTING_GROUPS = {{ lines|tojson }};
+  const orderTypeRows = document.getElementById("orderTypeRows");
+  const orderTypeTemplate = document.getElementById("orderTypeTemplate");
+  const subrowTemplate = document.getElementById("subrowTemplate");
+  const addOrderTypeBtn = document.getElementById("addOrderTypeBtn");
+  const lineCount = document.getElementById("lineCount");
+
+  function refreshDesigns(row) {
+    const coating = row.querySelector(".coating-type");
+    const list = row.querySelector("datalist");
+    const design = row.querySelector(".design-field");
+    const options = window.COATING_DESIGNS[coating.value || "Without Coating"] || [];
+    list.innerHTML = options.map(v => `<option value="${v}"></option>`).join("");
+    design.setCustomValidity("");
+  }
+
+  function toggleGarden(row) {
+    const garden = row.querySelector(".pipe-type").value === "garden";
+    row.querySelectorAll(".garden-only").forEach(el => el.style.display = garden ? "" : "none");
+  }
+
+  function reindex() {
+    const orderRows = [...orderTypeRows.querySelectorAll(".order-type-row")];
+    lineCount.value = orderRows.length;
+    orderRows.forEach((row, i) => {
+      row.querySelector(".order-index").textContent = i + 1;
+      row.querySelector(".pipe-type").name = `pipe_type_${i}`;
+      row.querySelector(".color-field").name = `color_${i}`;
+      row.querySelector(".machine-type").name = `machine_type_${i}`;
+      row.querySelector(".coating-type").name = `coating_type_${i}`;
+      row.querySelector(".design-field").name = `design_${i}`;
+      row.querySelector(".design-field").setAttribute("list", `designOptions_${i}`);
+      row.querySelector("datalist").id = `designOptions_${i}`;
+      row.querySelector(".sub-count").name = `sub_count_${i}`;
+      const subs = [...row.querySelectorAll(".subrow")];
+      row.querySelector(".sub-count").value = subs.length;
+      subs.forEach((sub, j) => {
+        sub.querySelector(".size-field").name = `size_inches_${i}_${j}`;
+        sub.querySelector(".qty-field").name = `quantity_kgs_${i}_${j}`;
+        sub.querySelector(".weight-field").name = `bundle_weight_${i}_${j}`;
+        sub.querySelector(".length-field").name = `length_${i}_${j}`;
+      });
+      toggleGarden(row);
+      refreshDesigns(row);
+    });
+  }
+
+  function addSubrow(row, prefill) {
+    const frag = subrowTemplate.content.cloneNode(true);
+    const sub = frag.querySelector(".subrow");
+    if (prefill) {
+      sub.querySelector(".size-field").value = prefill.size_inches || "";
+      sub.querySelector(".qty-field").value = prefill.quantity_kgs || "";
+      sub.querySelector(".weight-field").value = prefill.bundle_weight || "";
+      sub.querySelector(".length-field").value = prefill.length || "";
     }
-    coating.addEventListener("change", refresh);
-    refresh();
-  })();
+    row.querySelector(".subrows").appendChild(frag);
+    reindex();
+  }
+
+  function addOrderType(prefill) {
+    const frag = orderTypeTemplate.content.cloneNode(true);
+    const row = frag.querySelector(".order-type-row");
+    if (prefill) {
+      row.querySelector(".pipe-type").value = prefill.pipe_type || "garden";
+      row.querySelector(".color-field").value = prefill.color || "";
+      row.querySelector(".machine-type").value = prefill.machine_type || "fresh_garden";
+      row.querySelector(".coating-type").value = prefill.coating_type || "Without Coating";
+      row.querySelector(".design-field").value = prefill.design || "";
+      row.querySelector(".subrows").innerHTML = "";
+      (prefill.subrows || []).forEach(sr => addSubrow(row, sr));
+    }
+    row.querySelector(".remove-order-type").addEventListener("click", () => { row.remove(); reindex(); });
+    row.querySelector(".add-subrow-btn").addEventListener("click", () => addSubrow(row));
+    row.querySelector(".pipe-type").addEventListener("change", () => { toggleGarden(row); reindex(); });
+    row.querySelector(".coating-type").addEventListener("change", () => refreshDesigns(row));
+    orderTypeRows.appendChild(frag);
+    if (!prefill) {
+      addSubrow(row);
+    }
+    reindex();
+  }
+
+  addOrderTypeBtn.addEventListener("click", () => addOrderType());
+  if (window.EXISTING_GROUPS.length) {
+    window.EXISTING_GROUPS.forEach(group => addOrderType(group));
+  } else {
+    addOrderType();
+  }
 </script>
 {% endblock %}

@@ -3,30 +3,28 @@
 <div class="utility-bar"><div class="title">Add New Order</div></div>
 <div class="card p-4">
   <form method="POST" id="orderForm">
-    <div class="row g-3">
+    <div class="row g-3 mb-3">
       <div class="col-md-6">
         <label class="form-label">Client Name</label>
         <input type="text" name="client_name" class="form-control" required>
       </div>
       <div class="col-md-6 d-flex align-items-end justify-content-end">
-        <button type="button" class="btn btn-secondary" id="addRowBtn">Add Row</button>
+        <button type="button" class="btn btn-secondary" id="addOrderTypeBtn">Add Order Type</button>
       </div>
     </div>
-    <input type="hidden" name="line_count" id="lineCount" value="1">
-    <div id="lineRows" class="mt-4"></div>
-    <div class="mt-4">
-      <button type="submit" class="btn btn-primary">Add Order</button>
-    </div>
+    <input type="hidden" name="line_count" id="lineCount" value="0">
+    <div id="orderTypeRows"></div>
+    <button type="submit" class="btn btn-primary mt-3">Add Order</button>
   </form>
 </div>
 
-<template id="lineTemplate">
-  <div class="border rounded p-3 mb-3 line-row">
+<template id="orderTypeTemplate">
+  <div class="border rounded p-3 mb-4 order-type-row">
     <div class="d-flex justify-content-between align-items-center mb-3">
-      <strong>Pipe Row <span class="row-index"></span></strong>
-      <button type="button" class="btn btn-sm btn-outline-danger remove-row">Remove</button>
+      <strong>Order Type <span class="order-index"></span></strong>
+      <button type="button" class="btn btn-sm btn-outline-danger remove-order-type">Remove</button>
     </div>
-    <div class="row g-3">
+    <div class="row g-3 mb-3">
       <div class="col-md-3">
         <label class="form-label">Pipe Type</label>
         <select class="form-select pipe-type" name="pipe_type_0" required>
@@ -36,23 +34,11 @@
       </div>
       <div class="col-md-3">
         <label class="form-label">Color</label>
-        <input type="text" class="form-control" name="color_0" required>
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">Size</label>
-        <select class="form-select size-field" name="size_inches_0" required>
-          {% for s in sizes %}
-            <option value="{{ s }}">{{ s }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">Quantity (kgs)</label>
-        <input type="number" step="0.01" class="form-control" name="quantity_kgs_0" required>
+        <input type="text" class="form-control color-field" name="color_0" required>
       </div>
       <div class="col-md-3 garden-only">
         <label class="form-label">Machine</label>
-        <select class="form-select" name="machine_type_0">
+        <select class="form-select machine-type" name="machine_type_0">
           <option value="fresh_garden">Fresh PVC Garden Pipe Machine</option>
           <option value="recycled_garden">Recycled PVC Garden Pipe Machine</option>
         </select>
@@ -60,7 +46,6 @@
       <div class="col-md-3 garden-only">
         <label class="form-label">Coating Type</label>
         <select class="form-select coating-type" name="coating_type_0">
-          <option value="">None</option>
           <option value="Without Coating">Without Coating</option>
           <option value="Single Coating">Single Coating</option>
           <option value="Double Coating">Double Coating</option>
@@ -71,75 +56,115 @@
         <input type="text" class="form-control design-field" name="design_0" list="designOptions_0">
         <datalist id="designOptions_0"></datalist>
       </div>
-      <div class="col-md-2 garden-only">
-        <label class="form-label">Resin</label>
-        <input type="number" step="0.01" class="form-control" name="resin_amount_0" value="0">
-      </div>
-      <div class="col-md-2 garden-only">
-        <label class="form-label">CPW</label>
-        <input type="number" step="0.01" class="form-control" name="cpw_amount_0" value="0">
-      </div>
-      <div class="col-md-2 garden-only">
-        <label class="form-label">DPP</label>
-        <input type="number" step="0.01" class="form-control" name="dpp_amount_0" value="0">
-      </div>
+    </div>
+    <input type="hidden" name="sub_count_0" value="1" class="sub-count">
+    <div class="subrows"></div>
+    <button type="button" class="btn btn-sm btn-secondary add-subrow-btn mt-2">Add Size Row</button>
+  </div>
+</template>
+
+<template id="subrowTemplate">
+  <div class="row g-3 align-items-end subrow mb-2">
+    <div class="col-md-3">
+      <label class="form-label">Size</label>
+      <select class="form-select size-field" name="size_inches_0_0" required>
+        {% for s in sizes %}
+          <option value="{{ s }}">{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
       <div class="col-md-3">
-        <label class="form-label">Expected Delivery</label>
-        <input type="date" class="form-control" name="expected_delivery_0" required>
+        <label class="form-label">Quantity (no of pcs)</label>
+        <input type="number" step="1" class="form-control qty-field" name="quantity_kgs_0_0" required>
       </div>
+    <div class="col-md-3">
+      <label class="form-label">Weight per bundle (kgs)</label>
+      <input type="number" step="0.01" class="form-control weight-field" name="bundle_weight_0_0">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Length per bundle (meters)</label>
+      <input type="text" class="form-control length-field" name="length_0_0" placeholder="e.g. 30m">
     </div>
   </div>
 </template>
 
 <script>
   window.COATING_DESIGNS = {{ coating_designs|tojson }};
-  const lineRows = document.getElementById("lineRows");
-  const lineTemplate = document.getElementById("lineTemplate");
+  const orderTypeRows = document.getElementById("orderTypeRows");
+  const orderTypeTemplate = document.getElementById("orderTypeTemplate");
+  const subrowTemplate = document.getElementById("subrowTemplate");
+  const addOrderTypeBtn = document.getElementById("addOrderTypeBtn");
   const lineCount = document.getElementById("lineCount");
-  const addRowBtn = document.getElementById("addRowBtn");
 
-  function refreshDatalist(row) {
+  function refreshDesigns(row) {
     const coating = row.querySelector(".coating-type");
-    const design = row.querySelector(".design-field");
     const list = row.querySelector("datalist");
-    const options = window.COATING_DESIGNS[coating.value || ""] || [];
+    const design = row.querySelector(".design-field");
+    const options = window.COATING_DESIGNS[coating.value || "Without Coating"] || [];
     list.innerHTML = options.map(v => `<option value="${v}"></option>`).join("");
-    if (!options.includes(design.value)) {
-      design.setCustomValidity("");
-    }
+    design.setCustomValidity("");
   }
 
-  function toggleGardenFields(row) {
-    const pipeType = row.querySelector(".pipe-type").value;
-    row.querySelectorAll(".garden-only").forEach(el => el.style.display = pipeType === "garden" ? "" : "none");
-    row.querySelector(".garden-only select, .garden-only input")?.setAttribute("required", pipeType === "garden");
+  function toggleGarden(row) {
+    const garden = row.querySelector(".pipe-type").value === "garden";
+    row.querySelectorAll(".garden-only").forEach(el => el.style.display = garden ? "" : "none");
   }
 
-  function reindexRows() {
-    const rows = [...lineRows.querySelectorAll(".line-row")];
-    lineCount.value = rows.length;
-    rows.forEach((row, idx) => {
-      row.querySelector(".row-index").textContent = idx + 1;
-      row.querySelectorAll("[name]").forEach(el => {
-        el.name = el.name.replace(/_\d+$/, `_${idx}`);
+  function reindex() {
+    const orderRows = [...orderTypeRows.querySelectorAll(".order-type-row")];
+    lineCount.value = orderRows.length;
+    orderRows.forEach((row, i) => {
+      row.querySelector(".order-index").textContent = i + 1;
+      row.querySelector(".pipe-type").name = `pipe_type_${i}`;
+      row.querySelector(".color-field").name = `color_${i}`;
+      row.querySelector(".machine-type").name = `machine_type_${i}`;
+      row.querySelector(".coating-type").name = `coating_type_${i}`;
+      row.querySelector(".design-field").name = `design_${i}`;
+      row.querySelector(".design-field").setAttribute("list", `designOptions_${i}`);
+      row.querySelector("datalist").id = `designOptions_${i}`;
+      row.querySelector(".sub-count").name = `sub_count_${i}`;
+      const subs = [...row.querySelectorAll(".subrow")];
+      row.querySelector(".sub-count").value = subs.length;
+      subs.forEach((sub, j) => {
+        sub.querySelector(".size-field").name = `size_inches_${i}_${j}`;
+        sub.querySelector(".qty-field").name = `quantity_kgs_${i}_${j}`;
+        sub.querySelector(".weight-field").name = `bundle_weight_${i}_${j}`;
+        sub.querySelector(".length-field").name = `length_${i}_${j}`;
       });
-      row.querySelectorAll("datalist").forEach(dl => dl.id = `designOptions_${idx}`);
-      row.querySelector(".design-field").setAttribute("list", `designOptions_${idx}`);
-      row.querySelector(".pipe-type").addEventListener("change", () => toggleGardenFields(row));
-      row.querySelector(".coating-type")?.addEventListener("change", () => refreshDatalist(row));
-      row.querySelector(".remove-row").addEventListener("click", () => { if (rows.length > 1) { row.remove(); reindexRows(); }});
-      toggleGardenFields(row);
-      refreshDatalist(row);
+      toggleGarden(row);
+      refreshDesigns(row);
     });
   }
 
-  function addRow() {
-    const frag = lineTemplate.content.cloneNode(true);
-    lineRows.appendChild(frag);
-    reindexRows();
+  function addSubrow(row) {
+    const frag = subrowTemplate.content.cloneNode(true);
+    row.querySelector(".subrows").appendChild(frag);
+    reindex();
   }
 
-  addRowBtn.addEventListener("click", addRow);
-  addRow();
+  function addOrderType(prefill) {
+    const frag = orderTypeTemplate.content.cloneNode(true);
+    const row = frag.querySelector(".order-type-row");
+    if (prefill) {
+      row.querySelector(".pipe-type").value = prefill.pipe_type || "garden";
+      row.querySelector(".color-field").value = prefill.color || "";
+      row.querySelector(".machine-type").value = prefill.machine_type || "fresh_garden";
+      row.querySelector(".coating-type").value = prefill.coating_type || "Without Coating";
+      row.querySelector(".design-field").value = prefill.design || "";
+      const subrows = row.querySelector(".subrows");
+      subrows.innerHTML = "";
+      (prefill.subrows || []).forEach(() => addSubrow(row));
+    }
+    row.querySelector(".remove-order-type").addEventListener("click", () => { row.remove(); reindex(); });
+    row.querySelector(".add-subrow-btn").addEventListener("click", () => addSubrow(row));
+    row.querySelector(".pipe-type").addEventListener("change", () => { toggleGarden(row); reindex(); });
+    row.querySelector(".coating-type").addEventListener("change", () => refreshDesigns(row));
+    orderTypeRows.appendChild(frag);
+    addSubrow(row);
+    reindex();
+  }
+
+  addOrderTypeBtn.addEventListener("click", () => addOrderType());
+  addOrderType();
 </script>
 {% endblock %}
