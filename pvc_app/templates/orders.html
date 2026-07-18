@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4">All Orders</h2>
+
+<form method="GET" class="row g-3 mb-4">
+    <div class="col-md-2">
+        <label class="form-label">Size</label>
+        <select name="size" class="form-select">
+            <option value="">Any</option>
+            {% for s in sizes %}
+                <option value="{{ s }}" {% if request.args.get('size') == s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Machine</label>
+        <select name="field" class="form-select">
+            <option value="machine_type" {% if request.args.get('field') == 'machine_type' %}selected{% endif %}>Machine</option>
+            <option value="coating_type" {% if request.args.get('field') == 'coating_type' %}selected{% endif %}>Coating Type</option>
+            <option value="design" {% if request.args.get('field') == 'design' %}selected{% endif %}>Design</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Delivery Date</label>
+        <input type="date" name="date" value="{{ request.args.get('date', '') }}" class="form-control">
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Completed</label>
+        <select name="completed" class="form-select">
+            <option value="" {% if not request.args.get('completed') %}selected{% endif %}>Any</option>
+            <option value="true" {% if request.args.get('completed') == 'true' %}selected{% endif %}>Yes</option>
+            <option value="false" {% if request.args.get('completed') == 'false' %}selected{% endif %}>No</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Filter Any Field</label>
+        <div class="input-group">
+            <select name="field" class="form-select" style="max-width: 50%">
+                {% for key, label in any_fields %}
+                    <option value="{{ key }}" {% if request.args.get('field') == key %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" name="value" value="{{ request.args.get('value','') }}" class="form-control" placeholder="contains / equals">
+        </div>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Sort</label>
+        <div class="input-group">
+            <select name="sort_by" class="form-select">
+                {% for key, label in sort_fields %}
+                    <option value="{{ key }}" {% if request.args.get('sort_by') == key %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+            <select name="sort_dir" class="form-select" style="max-width: 40%">
+                <option value="asc" {% if request.args.get('sort_dir','asc') == 'asc' %}selected{% endif %}>Asc</option>
+                <option value="desc" {% if request.args.get('sort_dir') == 'desc' %}selected{% endif %}>Desc</option>
+            </select>
+        </div>
+    </div>
+    <div class="col-12 d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Apply</button>
+        <a href="{{ url_for('main.view_orders') }}" class="btn btn-secondary">Clear</a>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead class="table-primary">
+                <tr>
+                    <th>ID</th>
+                    <th>Client</th>
+                    <th>Quantity (kgs)</th>
+                    <th>Machine</th>
+                    <th>Color</th>
+                    <th>Coating</th>
+                    <th>Design</th>
+                    <th>Size</th>
+                    <th>Delivery</th>
+                    <th>Completed</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td>{{ order.id }}</td>
+                    <td>
+                        <span data-bs-toggle="tooltip" data-bs-title="Resin: {{ order.resin_amount }}, CPW: {{ order.cpw_amount }}, DPP: {{ order.dpp_amount }}">
+                            {{ order.client_name }}
+                        </span>
+                    </td>
+                    <td>{{ order.quantity_kgs }}</td>
+                    <td>{{ order.machine_type }}</td>
+                    <td>{{ order.color }}</td>
+                    <td>{{ order.coating_type or '-' }}</td>
+                    <td>{{ order.design or '-' }}</td>
+                    <td>{{ order.size_inches }}</td>
+                    <td>{{ order.expected_delivery }}</td>
+                    <td>
+                        {% if order.completed %}
+                            <span class="badge bg-success">Yes</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">No</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('main.edit_order', order_id=order.id) }}" class="btn btn-sm btn-warning">Edit</a>
+                        <a href="{{ url_for('main.delete_order', order_id=order.id) }}" class="btn btn-sm btn-danger"
+                           onclick="return confirm('Are you sure you want to delete this order?')">Delete</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

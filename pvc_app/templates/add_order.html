@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="utility-bar"><div class="title">Add New Order</div></div>
+<div class="card p-4">
+  <form method="POST" id="orderForm">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">Client Name</label>
+        <input type="text" name="client_name" class="form-control" required>
+      </div>
+      <div class="col-md-6 d-flex align-items-end justify-content-end">
+        <button type="button" class="btn btn-secondary" id="addRowBtn">Add Row</button>
+      </div>
+    </div>
+    <input type="hidden" name="line_count" id="lineCount" value="1">
+    <div id="lineRows" class="mt-4"></div>
+    <div class="mt-4">
+      <button type="submit" class="btn btn-primary">Add Order</button>
+    </div>
+  </form>
+</div>
+
+<template id="lineTemplate">
+  <div class="border rounded p-3 mb-3 line-row">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <strong>Pipe Row <span class="row-index"></span></strong>
+      <button type="button" class="btn btn-sm btn-outline-danger remove-row">Remove</button>
+    </div>
+    <div class="row g-3">
+      <div class="col-md-3">
+        <label class="form-label">Pipe Type</label>
+        <select class="form-select pipe-type" name="pipe_type_0" required>
+          <option value="garden">Garden</option>
+          <option value="braided">Braided</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Color</label>
+        <input type="text" class="form-control" name="color_0" required>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Size</label>
+        <select class="form-select size-field" name="size_inches_0" required>
+          {% for s in sizes %}
+            <option value="{{ s }}">{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Quantity (kgs)</label>
+        <input type="number" step="0.01" class="form-control" name="quantity_kgs_0" required>
+      </div>
+      <div class="col-md-3 garden-only">
+        <label class="form-label">Machine</label>
+        <select class="form-select" name="machine_type_0">
+          <option value="fresh_garden">Fresh PVC Garden Pipe Machine</option>
+          <option value="recycled_garden">Recycled PVC Garden Pipe Machine</option>
+        </select>
+      </div>
+      <div class="col-md-3 garden-only">
+        <label class="form-label">Coating Type</label>
+        <select class="form-select coating-type" name="coating_type_0">
+          <option value="">None</option>
+          <option value="Without Coating">Without Coating</option>
+          <option value="Single Coating">Single Coating</option>
+          <option value="Double Coating">Double Coating</option>
+        </select>
+      </div>
+      <div class="col-md-3 garden-only">
+        <label class="form-label">Design</label>
+        <input type="text" class="form-control design-field" name="design_0" list="designOptions_0">
+        <datalist id="designOptions_0"></datalist>
+      </div>
+      <div class="col-md-2 garden-only">
+        <label class="form-label">Resin</label>
+        <input type="number" step="0.01" class="form-control" name="resin_amount_0" value="0">
+      </div>
+      <div class="col-md-2 garden-only">
+        <label class="form-label">CPW</label>
+        <input type="number" step="0.01" class="form-control" name="cpw_amount_0" value="0">
+      </div>
+      <div class="col-md-2 garden-only">
+        <label class="form-label">DPP</label>
+        <input type="number" step="0.01" class="form-control" name="dpp_amount_0" value="0">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Expected Delivery</label>
+        <input type="date" class="form-control" name="expected_delivery_0" required>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+  window.COATING_DESIGNS = {{ coating_designs|tojson }};
+  const lineRows = document.getElementById("lineRows");
+  const lineTemplate = document.getElementById("lineTemplate");
+  const lineCount = document.getElementById("lineCount");
+  const addRowBtn = document.getElementById("addRowBtn");
+
+  function refreshDatalist(row) {
+    const coating = row.querySelector(".coating-type");
+    const design = row.querySelector(".design-field");
+    const list = row.querySelector("datalist");
+    const options = window.COATING_DESIGNS[coating.value || ""] || [];
+    list.innerHTML = options.map(v => `<option value="${v}"></option>`).join("");
+    if (!options.includes(design.value)) {
+      design.setCustomValidity("");
+    }
+  }
+
+  function toggleGardenFields(row) {
+    const pipeType = row.querySelector(".pipe-type").value;
+    row.querySelectorAll(".garden-only").forEach(el => el.style.display = pipeType === "garden" ? "" : "none");
+    row.querySelector(".garden-only select, .garden-only input")?.setAttribute("required", pipeType === "garden");
+  }
+
+  function reindexRows() {
+    const rows = [...lineRows.querySelectorAll(".line-row")];
+    lineCount.value = rows.length;
+    rows.forEach((row, idx) => {
+      row.querySelector(".row-index").textContent = idx + 1;
+      row.querySelectorAll("[name]").forEach(el => {
+        el.name = el.name.replace(/_\d+$/, `_${idx}`);
+      });
+      row.querySelectorAll("datalist").forEach(dl => dl.id = `designOptions_${idx}`);
+      row.querySelector(".design-field").setAttribute("list", `designOptions_${idx}`);
+      row.querySelector(".pipe-type").addEventListener("change", () => toggleGardenFields(row));
+      row.querySelector(".coating-type")?.addEventListener("change", () => refreshDatalist(row));
+      row.querySelector(".remove-row").addEventListener("click", () => { if (rows.length > 1) { row.remove(); reindexRows(); }});
+      toggleGardenFields(row);
+      refreshDatalist(row);
+    });
+  }
+
+  function addRow() {
+    const frag = lineTemplate.content.cloneNode(true);
+    lineRows.appendChild(frag);
+    reindexRows();
+  }
+
+  addRowBtn.addEventListener("click", addRow);
+  addRow();
+</script>
+{% endblock %}

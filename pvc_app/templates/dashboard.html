@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-md-4">
+    <div class="card p-3 text-reset">
+      <div class="card-body">
+        <div class="small">Pending Orders</div>
+        <h4 class="mb-0">{{ total_pending }} KGs</h4>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card p-3 text-reset">
+      <div class="card-body">
+        <div class="small">Completed Orders</div>
+        <h4 class="mb-0">{{ total_completed }} KGs</h4>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card p-3 text-reset">
+      <div class="card-body">
+        <div class="small">Total Orders</div>
+        <h4 class="mb-0">{{ total_orders }}</h4>
+      </div>
+    </div>
+  </div>
+</div>
+
+<a href="{{ url_for('main.view_orders') }}" class="btn btn-primary mt-4">View All Orders</a>
+{% endblock %}
+

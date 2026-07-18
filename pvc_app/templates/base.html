@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title if title else "PVC Orders" }}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="{{ url_for('static', filename='css/theme.css') }}" rel="stylesheet" />
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg">
+    <div class="container">
+      <a class="navbar-brand" href="{{ url_for('main.dashboard') }}">PVC Orders</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('main.dashboard') }}">Dashboard</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('main.production_schedule') }}">Production Schedule</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('main.view_orders') }}">View Orders</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('main.add_order') }}">Add Order</a></li>
+          <li class="nav-item ms-2 d-flex align-items-center">
+            <button id="themeToggle" class="btn btn-secondary btn-sm" type="button" aria-label="Toggle theme">
+              <span id="themeIcon" aria-hidden="true"></span>
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container py-4">
+    {% block content %}{% endblock %}
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Enable all tooltips
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+    const tooltipList = [...tooltipTriggerList].map(tt => new bootstrap.Tooltip(tt))
+
+    // Theme toggle persistence
+    const root = document.documentElement;
+    const savedTheme = localStorage.getItem('theme');
+    const themeIcon = document.getElementById('themeIcon');
+    const applyIcon = () => {
+      themeIcon.textContent = root.classList.contains('light') ? '☀️' : '🌙';
+    };
+    if (savedTheme === 'light') root.classList.add('light');
+    applyIcon();
+
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      root.classList.toggle('light');
+      localStorage.setItem('theme', root.classList.contains('light') ? 'light' : 'dark');
+      applyIcon();
+    });
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="utility-bar"><div class="title">Production Schedule</div></div>
+
+{% if schedule|length == 0 %}
+  <div class="alert alert-success">No pending orders. 🎉</div>
+{% else %}
+  {% for day in schedule %}
+    <div class="card mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Day: {{ day.day }}</strong>
+        <span class="badge bg-secondary">Total: {{ "%.2f"|format(day.total_kgs) }} kgs</span>
+      </div>
+      <div class="card-body p-0">
+        {% if day.shifts|length == 0 %}
+          <div class="p-3">No work planned.</div>
+        {% else %}
+          {% for shift in day.shifts %}
+            <div class="border-top p-3">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <strong>{{ shift.shift|title }} Shift</strong>
+                <span class="badge bg-secondary">{{ "%.2f"|format(shift.total_kgs) }} kgs</span>
+              </div>
+              {% for machine in shift.machines %}
+                <div class="mb-3">
+                  <div class="small text-uppercase mb-2">{{ machine.machine }}</div>
+                  <div class="table-responsive">
+                    <table class="table table-sm table-striped table-hover align-middle mb-0">
+                      <thead>
+                        <tr>
+                          <th style="width: 24%">Machine / Batch</th>
+                          <th style="width: 8%">Order ID</th>
+                          <th style="width: 18%">Client</th>
+                          <th style="width: 10%">Size (in)</th>
+                          <th style="width: 12%">Allocated (kgs)</th>
+                          <th style="width: 12%">Deadline</th>
+                          <th style="width: 10%">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for batch in machine.batches %}
+                          {% for al in batch.orders %}
+                            {% set o = al.order %}
+                            <tr>
+                              {% if loop.first %}
+                                <td rowspan="{{ batch.orders|length }}" class="align-middle">
+                                  <span class="badge bg-secondary">Batch</span>
+                                  <div class="small mt-1">{{ mk_label(batch.material_key) }}</div>
+                                </td>
+                              {% endif %}
+                              <td>#{{ o.id }}</td>
+                              <td>{{ o.client_name }}</td>
+                              <td>{{ o.size_inches }}</td>
+                              <td>{{ "%.2f"|format(al.kgs) }}</td>
+                              <td>{{ o.expected_delivery }}</td>
+                              <td>
+                                {% set late = summary[o.id]['late'] %}
+                                {% if late %}
+                                  <span class="badge bg-danger">Late</span>
+                                {% else %}
+                                  <span class="badge bg-success">On-time</span>
+                                {% endif %}
+                              </td>
+                            </tr>
+                          {% endfor %}
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+{% endif %}
+{% endblock %}

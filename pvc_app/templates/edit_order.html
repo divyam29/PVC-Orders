@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="utility-bar"><div class="title">Edit Order #{{ order.id }}</div></div>
+
+<div class="card p-4">
+  <form method="POST" class="row g-3">
+    <div class="col-md-6">
+      <label class="form-label">Client Name</label>
+      <input type="text" name="client_name" value="{{ order.client_name }}" class="form-control" required>
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">Quantity (kgs)</label>
+      <input type="number" step="0.01" name="quantity_kgs" value="{{ order.quantity_kgs }}" class="form-control" required>
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">Color</label>
+      <input type="text" name="color" value="{{ order.color }}" class="form-control" required>
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">Machine</label>
+      <select name="machine_type" class="form-select" required>
+        {% for value, label in [
+          ("fresh_garden", "Fresh PVC Garden Pipe Machine"),
+          ("recycled_garden", "Recycled PVC Garden Pipe Machine"),
+          ("braided_1", "Braided PVC Pipe Machine 1"),
+          ("braided_2", "Braided PVC Pipe Machine 2"),
+        ] %}
+          <option value="{{ value }}" {% if order.machine_type == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">Coating Type</label>
+      <select name="coating_type" id="coatingType" class="form-select">
+        <option value="" {% if not order.coating_type %}selected{% endif %}>None / Braided</option>
+        {% for value in ["Without Coating", "Single Coating", "Double Coating"] %}
+          <option value="{{ value }}" {% if order.coating_type == value %}selected{% endif %}>{{ value }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">Design</label>
+      <input type="text" name="design" id="designInput" value="{{ order.design or '' }}" class="form-control" list="designOptions" placeholder="Select or type a design">
+      <datalist id="designOptions"></datalist>
+      <small class="form-text">Typing a new design will save it automatically for the selected coating type.</small>
+    </div>
+
+    <div class="col-md-2">
+      <label class="form-label">Resin</label>
+      <input type="number" step="0.01" name="resin_amount" value="{{ order.resin_amount }}" class="form-control" required>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">CPW</label>
+      <input type="number" step="0.01" name="cpw_amount" value="{{ order.cpw_amount }}" class="form-control" required>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">DPP</label>
+      <input type="number" step="0.01" name="dpp_amount" value="{{ order.dpp_amount }}" class="form-control" required>
+    </div>
+
+    <div class="col-md-4">
+      <label class="form-label">Size (inches)</label>
+      <select name="size_inches" class="form-select" required>
+        {% for s in ["0.25", "0.5", "0.75", "1", "1.25"] %}
+          <option value="{{ s }}" {% if order.size_inches == s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-4">
+      <label class="form-label">Expected Delivery</label>
+      <input type="date" name="expected_delivery" value="{{ order.expected_delivery }}" class="form-control" required>
+    </div>
+
+    <div class="col-md-4 d-flex align-items-end gap-2">
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" name="completed" id="completedCheck" {% if order.completed %}checked{% endif %}>
+        <label class="form-check-label" for="completedCheck">Completed</label>
+      </div>
+      <div class="ms-auto">
+        <a href="{{ url_for('main.view_orders') }}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </div>
+  </form>
+</div>
+<script>
+  window.COATING_DESIGNS = {{ coating_designs|tojson }};
+  (function () {
+    const coating = document.getElementById("coatingType");
+    const list = document.getElementById("designOptions");
+    function refresh() {
+      const selected = coating.value || "";
+      const options = window.COATING_DESIGNS[selected] || [];
+      list.innerHTML = options.map(v => `<option value="${v}"></option>`).join("");
+    }
+    coating.addEventListener("change", refresh);
+    refresh();
+  })();
+</script>
+{% endblock %}
