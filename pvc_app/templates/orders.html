@@ -61,17 +61,14 @@
 
 <div class="card shadow-sm">
     <div class="table-responsive">
-        <table class="table table-striped table-hover align-middle">
+        <table class="table table-hover align-middle mb-0">
             <thead class="table-primary">
                 <tr>
+                    <th style="width: 3rem;"></th>
                     <th>ID</th>
                     <th>Client</th>
-                    <th>Quantity (kgs)</th>
+                    <th>Total Weight</th>
                     <th>Machine</th>
-                    <th>Color</th>
-                    <th>Coating</th>
-                    <th>Design</th>
-                    <th>Size</th>
                     <th>Completed</th>
                     <th>Actions</th>
                 </tr>
@@ -79,16 +76,15 @@
             <tbody>
                 {% for order in orders %}
                 <tr>
-                    <td>{{ order.id }}</td>
                     <td>
-                        {{ order.client_name }}
+                        <button class="btn btn-sm btn-outline-secondary toggle-order-details" type="button" data-bs-toggle="collapse" data-bs-target="#order-details-{{ order.id }}" aria-expanded="false" aria-controls="order-details-{{ order.id }}">
+                            +
+                        </button>
                     </td>
-                    <td>{{ order.quantity_kgs }}</td>
+                    <td>{{ order.id }}</td>
+                    <td>{{ order.client_name }}</td>
+                    <td>{{ "%.2f"|format(order.quantity_kgs) }} kgs</td>
                     <td>{{ order.machine_type }}</td>
-                    <td>{{ order.color }}</td>
-                    <td>{{ order.coating_type or '-' }}</td>
-                    <td>{{ order.design or '-' }}</td>
-                    <td>{{ order.size_inches }}</td>
                     <td>
                         {% if order.completed %}
                             <span class="badge bg-success">Yes</span>
@@ -102,9 +98,63 @@
                            onclick="return confirm('Are you sure you want to delete this order?')">Delete</a>
                     </td>
                 </tr>
+                <tr>
+                    <td colspan="7" class="p-0 border-0">
+                        <div class="collapse bg-body-tertiary border-top" id="order-details-{{ order.id }}">
+                            <div class="p-3">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <strong>Order Details</strong>
+                                <span class="small text-muted">{{ order.color }} | {{ order.coating_type or 'Without Coating' }} | {{ order.design or '-' }}</span>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-striped align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Pipe Type</th>
+                                            <th>Machine</th>
+                                            <th>Color</th>
+                                            <th>Coating</th>
+                                            <th>Design</th>
+                                            <th>Size</th>
+                                            <th>PCS</th>
+                                            <th>Wt / PC (kg)</th>
+                                            <th>Total (kg)</th>
+                                            <th>Length</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for line in order.lines %}
+                                        <tr>
+                                            <td>{{ line.pipe_type }}</td>
+                                            <td>{{ line.machine_type }}</td>
+                                            <td>{{ line.color }}</td>
+                                            <td>{{ line.coating_type or '-' }}</td>
+                                            <td>{{ line.design or '-' }}</td>
+                                            <td>{{ line.size_inches }}</td>
+                                            <td>{{ line.quantity_pcs }}</td>
+                                            <td>{{ "%.2f"|format(line.weight_per_piece_kg) }}</td>
+                                            <td>{{ "%.2f"|format(line.quantity_kgs) }}</td>
+                                            <td>{{ line.length or '-' }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
+<script>
+  document.querySelectorAll(".toggle-order-details").forEach(btn => {
+    const target = document.querySelector(btn.getAttribute("data-bs-target"));
+    if (!target) return;
+    target.addEventListener("show.bs.collapse", () => { btn.textContent = "−"; });
+    target.addEventListener("hide.bs.collapse", () => { btn.textContent = "+"; });
+  });
+</script>
 {% endblock %}

@@ -87,9 +87,66 @@ a, a:hover{ color: var(--accent); text-decoration: none; }
 .badge{ color:#0b0f14; }
 .badge.bg-secondary{ color: var(--text); }
 
+/* dashboard-specific badges */
+.dashboard-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:.38rem .7rem;
+  border-radius:999px;
+  font-weight:700;
+  letter-spacing:.2px;
+  border:1px solid transparent;
+}
+.dashboard-badge-neutral{
+  background:#5f6b78;
+  color:#f7fbff;
+}
+.dashboard-badge-dark{
+  background:#232b36;
+  color:#f7fbff;
+  border-color:#394352;
+}
+.dashboard-badge-info{
+  background: linear-gradient(135deg, #16b7e6, #4cc2ff);
+  color:#001018;
+}
+.dashboard-badge-success{
+  background: linear-gradient(135deg, #21c27a, #7effa1);
+  color:#00160a;
+}
+.dashboard-badge-danger{
+  background: linear-gradient(135deg, #d94e5d, #ff7a7a);
+  color:#fff;
+}
+
 /* tooltip reset for dark/light */
 .tooltip-inner{ background:#0d141c; color:var(--text); border:1px solid var(--border); }
 :root.light .tooltip-inner{ background:#fff; color:#0b0f14; border:1px solid var(--border); }
 .bs-tooltip-auto[data-popper-placement^=top] .tooltip-arrow::before, .bs-tooltip-top .tooltip-arrow::before{ border-top-color:#0d141c; }
 :root.light .bs-tooltip-auto[data-popper-placement^=top] .tooltip-arrow::before, :root.light .bs-tooltip-top .tooltip-arrow::before{ border-top-color:#fff; }
 
+/* compact row delete control */
+.remove-subrow-btn{
+  position:absolute;
+  top:8px;
+  right:8px;
+  width:24px;
+  height:24px;
+  padding:0;
+  border:1px solid var(--border);
+  border-radius:999px;
+  background: rgba(255,255,255,.04);
+  color: var(--danger);
+  font-size: 18px;
+  line-height: 1;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  z-index: 2;
+  cursor:pointer;
+}
+.remove-subrow-btn:hover{
+  background: rgba(255,107,107,.12);
+  color: var(--danger);
+}

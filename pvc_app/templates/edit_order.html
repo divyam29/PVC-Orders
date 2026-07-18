@@ -42,8 +42,8 @@
       <div class="col-md-3 garden-only">
         <label class="form-label">Machine</label>
         <select class="form-select machine-type" name="machine_type_0">
-          <option value="fresh_garden">Fresh PVC Garden Pipe Machine</option>
-          <option value="recycled_garden">Recycled PVC Garden Pipe Machine</option>
+          <option value="fresh_garden">Fresh Garden</option>
+          <option value="recycled_garden">Recycled Garden</option>
         </select>
       </div>
       <div class="col-md-3 garden-only">
@@ -67,7 +67,8 @@
 </template>
 
 <template id="subrowTemplate">
-  <div class="row g-3 align-items-end subrow mb-2">
+  <div class="row g-3 align-items-end subrow mb-2 position-relative">
+    <button type="button" class="remove-subrow-btn" aria-label="Delete row" title="Delete row">×</button>
     <div class="col-md-3">
       <label class="form-label">Size</label>
       <select class="form-select size-field" name="size_inches_0_0" required>
@@ -78,7 +79,7 @@
     </div>
     <div class="col-md-3">
       <label class="form-label">Quantity (no of pcs)</label>
-      <input type="number" step="1" class="form-control qty-field" name="quantity_kgs_0_0" required>
+      <input type="number" step="1" class="form-control qty-field" name="quantity_pcs_0_0" required>
     </div>
     <div class="col-md-3">
       <label class="form-label">Weight per bundle (kgs)</label>
@@ -86,7 +87,7 @@
     </div>
     <div class="col-md-3">
       <label class="form-label">Length per bundle (meters)</label>
-      <input type="text" class="form-control length-field" name="length_0_0" placeholder="e.g. 30m">
+      <input type="text" class="form-control length-field" name="length_0_0" value="30" placeholder="e.g. 30">
     </div>
   </div>
 </template>
@@ -131,9 +132,15 @@
       row.querySelector(".sub-count").value = subs.length;
       subs.forEach((sub, j) => {
         sub.querySelector(".size-field").name = `size_inches_${i}_${j}`;
-        sub.querySelector(".qty-field").name = `quantity_kgs_${i}_${j}`;
+        sub.querySelector(".qty-field").name = `quantity_pcs_${i}_${j}`;
         sub.querySelector(".weight-field").name = `bundle_weight_${i}_${j}`;
         sub.querySelector(".length-field").name = `length_${i}_${j}`;
+        sub.querySelector(".remove-subrow-btn").onclick = () => {
+          if (subs.length > 1) {
+            sub.remove();
+            reindex();
+          }
+        };
       });
       toggleGarden(row);
       refreshDesigns(row);
@@ -145,9 +152,11 @@
     const sub = frag.querySelector(".subrow");
     if (prefill) {
       sub.querySelector(".size-field").value = prefill.size_inches || "";
-      sub.querySelector(".qty-field").value = prefill.quantity_kgs || "";
-      sub.querySelector(".weight-field").value = prefill.bundle_weight || "";
-      sub.querySelector(".length-field").value = prefill.length || "";
+      sub.querySelector(".qty-field").value = prefill.quantity_pcs || "";
+      sub.querySelector(".weight-field").value = prefill.weight_per_piece_kg || "";
+      sub.querySelector(".length-field").value = prefill.length || "30";
+    } else {
+      sub.querySelector(".length-field").value = "30";
     }
     row.querySelector(".subrows").appendChild(frag);
     reindex();

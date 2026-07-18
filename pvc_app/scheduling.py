@@ -12,9 +12,10 @@ BRAIDED_MACHINES = ("braided_1", "braided_2")
 ALL_MACHINES = GARDEN_MACHINES + BRAIDED_MACHINES
 DAY_SHIFT_HOURS = 11
 NIGHT_SHIFT_HOURS = 11
+NIGHT_SHIFT_MIN_HOURS = 10.0
+NIGHT_SHIFT_LOOKAHEAD_DAYS = 5
 
 BRAIDED_RATE_BY_SIZE = {
-    "0.25": 45.0,
     "1.25": 95.0,
     "1/2": 45.0,
     '1/2"': 45.0,
@@ -155,6 +156,20 @@ def build_production_schedule(orders: List[Order], *_, **__):
                 active = [o for o in buckets[machine] if remaining[o.id] > 1e-9]
                 if not active:
                     continue
+                if is_night:
+                    rate = machine_hourly_rate(active[0])
+                    machine_pending_kgs = sum(remaining[o.id] for o in active)
+                    machine_night_capacity = rate * NIGHT_SHIFT_HOURS
+                    day_only_capacity = rate * DAY_SHIFT_HOURS * NIGHT_SHIFT_LOOKAHEAD_DAYS
+                    urgent_pending = sum(
+                        remaining[o.id]
+                        for o in active
+                        if _item(o, "expected_delivery") <= current_day + timedelta(days=NIGHT_SHIFT_LOOKAHEAD_DAYS - 1)
+                    )
+                    if machine_pending_kgs < rate * NIGHT_SHIFT_MIN_HOURS:
+                        continue
+                    if urgent_pending <= 1e-9 or urgent_pending <= day_only_capacity:
+                        continue
                 hours_left = float(shift_hours)
                 machine_plan = {"machine": machine, "batches": []}
                 while hours_left > 1e-9 and active:

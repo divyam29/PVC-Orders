@@ -2,7 +2,7 @@ from flask import Flask
 from sqlalchemy import inspect, text
 from .extensions import db
 from .urls import register_urls
-from .cli import generate_test_orders
+from .cli import clear_all_data, generate_schedule_stress_data, generate_test_orders
 
 
 def create_app(test_config: dict | None = None):
@@ -21,6 +21,8 @@ def create_app(test_config: dict | None = None):
 
     # CLI
     app.cli.add_command(generate_test_orders)
+    app.cli.add_command(generate_schedule_stress_data)
+    app.cli.add_command(clear_all_data)
 
     # create tables on startup (skip when testing; tests control schema lifecycle)
     if not app.config.get("TESTING"):

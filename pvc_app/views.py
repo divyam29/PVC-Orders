@@ -40,7 +40,7 @@ def _parse_lines(form):
         sub_count = int(form.get(f"sub_count_{idx}", 0) or 0)
         for sub_idx in range(sub_count):
             size_inches = (form.get(f"size_inches_{idx}_{sub_idx}") or "").strip()
-            quantity_pcs = int(float(form.get(f"quantity_kgs_{idx}_{sub_idx}") or 0))
+            quantity_pcs = int(float(form.get(f"quantity_pcs_{idx}_{sub_idx}") or 0))
             if quantity_pcs <= 0:
                 continue
             length = (form.get(f"length_{idx}_{sub_idx}") or "").strip() or None
@@ -85,6 +85,8 @@ def _order_lines_payload(order: Order):
         group["subrows"].append({
             "idx": idx,
             "size_inches": line.size_inches,
+            "quantity_pcs": line.quantity_pcs,
+            "weight_per_piece_kg": line.weight_per_piece_kg,
             "quantity_kgs": line.quantity_kgs,
             "length": line.length or "",
         })
@@ -93,18 +95,20 @@ def _order_lines_payload(order: Order):
 
 @bp.route("/")
 def dashboard():
-    total_pending = (
-        db.session.query(db.func.sum(Order.quantity_kgs)).filter_by(completed=False).scalar() or 0
-    )
-    total_completed = (
-        db.session.query(db.func.sum(Order.quantity_kgs)).filter_by(completed=True).scalar() or 0
-    )
+    orders = Order.query.filter_by(completed=False).all()
+    schedule, summary = build_production_schedule(orders)
+    total_pending = db.session.query(db.func.sum(Order.quantity_kgs)).filter_by(completed=False).scalar() or 0
+    total_completed = db.session.query(db.func.sum(Order.quantity_kgs)).filter_by(completed=True).scalar() or 0
     total_orders = Order.query.count()
     return render_template(
-        "dashboard.html",
+        "production_schedule.html",
         total_pending=total_pending,
         total_completed=total_completed,
         total_orders=total_orders,
+        schedule=schedule,
+        summary=summary,
+        mk_label=lambda mk: f"{mk[0]} | {mk[1] or '-'} | {mk[2] or '-'} | {mk[3]} | {mk[4]}",
+        page_title="Dashboard",
     )
 
 
@@ -299,7 +303,11 @@ def production_schedule():
 
     return render_template(
         "production_schedule.html",
+        total_pending=db.session.query(db.func.sum(Order.quantity_kgs)).filter_by(completed=False).scalar() or 0,
+        total_completed=db.session.query(db.func.sum(Order.quantity_kgs)).filter_by(completed=True).scalar() or 0,
+        total_orders=Order.query.count(),
         schedule=schedule,
         summary=summary,
         mk_label=mk_label,
+        page_title="Production Schedule",
     )
