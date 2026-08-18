@@ -60,6 +60,12 @@ class BaseStore:
     def list_designs(self):
         raise NotImplementedError
 
+    def list_clients(self):
+        raise NotImplementedError
+
+    def upsert_client(self, client_name: str):
+        raise NotImplementedError
+
     def clear_all_data(self) -> int:
         raise NotImplementedError
 
@@ -120,6 +126,19 @@ class SqlAlchemyStore(BaseStore):
     def list_designs(self):
         return Design.query.all()
 
+    def list_clients(self):
+        return [
+            name
+            for (name,) in db.session.query(Order.client_name)
+            .distinct()
+            .order_by(Order.client_name.asc())
+            .all()
+            if name
+        ]
+
+    def upsert_client(self, client_name: str):
+        return None
+
     def clear_all_data(self) -> int:
         deleted_lines = db.session.query(OrderLine).delete()
         deleted_orders = db.session.query(Order).delete()
@@ -142,6 +161,7 @@ class MongoStore(BaseStore):
         self.orders = self.db.orders
         self.order_lines = self.db.order_lines
         self.designs = self.db.designs
+        self.clients = self.db.clients
         self._indexes_ready = False
         self._ensure_indexes()
         self._verify_connection()
@@ -179,6 +199,7 @@ class MongoStore(BaseStore):
         try:
             self.orders.create_index("created_at")
             self.order_lines.create_index("order_id")
+            self.clients.create_index("name", unique=True)
             self._indexes_ready = True
         except Exception as exc:
             logger.warning("Mongo index setup failed: %s", exc)
@@ -283,10 +304,27 @@ class MongoStore(BaseStore):
         self._ensure_indexes()
         return [_ns(doc) for doc in self.designs.find().sort([("coating_type", 1), ("name", 1)])]
 
+    def list_clients(self):
+        self._ensure_indexes()
+        return [doc["name"] for doc in self.clients.find({}, {"name": 1, "_id": 0}).sort("name", 1) if doc.get("name")]
+
+    def upsert_client(self, client_name: str):
+        self._ensure_indexes()
+        client_name = (client_name or "").strip()
+        if not client_name:
+            return None
+        self.clients.update_one(
+            {"name": client_name},
+            {"$setOnInsert": {"id": self._next_id(self.clients), "name": client_name}},
+            upsert=True,
+        )
+        return client_name
+
     def clear_all_data(self) -> int:
         deleted = self.orders.delete_many({}).deleted_count
         deleted += self.order_lines.delete_many({}).deleted_count
         deleted += self.designs.delete_many({}).deleted_count
+        deleted += self.clients.delete_many({}).deleted_count
         return deleted
 
 
@@ -303,9 +341,8 @@ def get_store(app=None):
         try:
             store = MongoStore(mongo_uri, app.config.get("MONGODB_DB_NAME", "pvc_orders"))
         except Exception as exc:
-            logger.exception("Mongo store initialization failed, falling back to SQLAlchemy: %s", exc)
-            store = SqlAlchemyStore()
+            raise RuntimeError(f"Mongo store initialization failed: {exc}") from exc
     else:
-        store = SqlAlchemyStore()
+        raise RuntimeError("MONGODB_URI is required. SQLite fallback has been removed.")
     app.extensions["pvc_store"] = store
     return store

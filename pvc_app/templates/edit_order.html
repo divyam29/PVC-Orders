@@ -6,7 +6,12 @@
     <div class="row g-3 mb-3">
       <div class="col-md-6">
         <label class="form-label">Client Name</label>
-        <input type="text" name="client_name" class="form-control" value="{{ order.client_name }}" required>
+        <input type="text" name="client_name" class="form-control" value="{{ order.client_name }}" list="clientNameOptions" required>
+        <datalist id="clientNameOptions">
+          {% for client in client_names %}
+            <option value="{{ client }}"></option>
+          {% endfor %}
+        </datalist>
       </div>
       <div class="col-md-6 d-flex align-items-end justify-content-end">
         <button type="button" class="btn btn-secondary" id="addOrderTypeBtn">Add Order Type</button>

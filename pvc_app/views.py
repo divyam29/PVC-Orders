@@ -14,8 +14,15 @@ bp = Blueprint("main", __name__, template_folder="templates")
 def _auto_machine_for_line(pipe_type: str, preferred_machine: str | None, size_inches: str) -> str:
     if (pipe_type or "").lower() == "braided":
         # Auto-balance braided lines across the two braided machines.
-        braided_count_1 = db.session.query(db.func.count(OrderLine.id)).filter_by(machine_type="braided_1").scalar() or 0
-        braided_count_2 = db.session.query(db.func.count(OrderLine.id)).filter_by(machine_type="braided_2").scalar() or 0
+        store = get_store(current_app)
+        braided_count_1 = 0
+        braided_count_2 = 0
+        for order in store.list_orders(include_completed=True, order_desc=False):
+            for line in getattr(order, "lines", []):
+                if line.machine_type == "braided_1":
+                    braided_count_1 += 1
+                elif line.machine_type == "braided_2":
+                    braided_count_2 += 1
         return "braided_1" if braided_count_1 <= braided_count_2 else "braided_2"
     return preferred_machine or "fresh_garden"
 
@@ -102,6 +109,13 @@ def _designs_by_coating_from_store(store):
         if coating and name:
             grouped.setdefault(coating, set()).add(name)
     return {k: sorted(v) for k, v in grouped.items()}
+
+
+def _client_names_from_store(store):
+    try:
+        return sorted({name for name in store.list_clients() if name})
+    except Exception:
+        return []
 
 
 def _sync_order_completion(order: Order) -> bool:
@@ -281,8 +295,11 @@ def add_order():
                 else:
                     if not store.designs.find_one({"coating_type": line["coating_type"], "name": line["design"]}):
                         store.designs.insert_one({"id": store._next_id(store.designs), "coating_type": line["coating_type"], "name": line["design"]})
+        client_name = request.form["client_name"].strip()
+        if client_name:
+            store.upsert_client(client_name)
         new_order_payload = dict(
-            client_name=request.form["client_name"],
+            client_name=client_name,
             quantity_kgs=sum(line["quantity_kgs"] for line in lines),
             machine_type=lines[0]["machine_type"] if lines else "fresh_garden",
             color=lines[0]["color"] if lines else "",
@@ -300,6 +317,7 @@ def add_order():
     return render_template(
         "add_order.html",
         coating_designs=_designs_by_coating_from_store(get_store(current_app)),
+        client_names=_client_names_from_store(get_store(current_app)),
         sizes=SIZES,
     )
 
@@ -319,8 +337,11 @@ def edit_order(order_id):
                 else:
                     if not store.designs.find_one({"coating_type": line["coating_type"], "name": line["design"]}):
                         store.designs.insert_one({"id": store._next_id(store.designs), "coating_type": line["coating_type"], "name": line["design"]})
+        client_name = request.form["client_name"].strip()
+        if client_name:
+            store.upsert_client(client_name)
         store.update_order(order.id, {
-            "client_name": request.form["client_name"],
+            "client_name": client_name,
             "quantity_kgs": sum(line["quantity_kgs"] for line in lines),
             "machine_type": lines[0]["machine_type"] if lines else "fresh_garden",
             "color": lines[0]["color"] if lines else "",
@@ -338,6 +359,7 @@ def edit_order(order_id):
         "edit_order.html",
         order=order,
         coating_designs=_designs_by_coating_from_store(store),
+        client_names=_client_names_from_store(store),
         sizes=SIZES,
         lines=_order_lines_payload(order),
     )
@@ -370,7 +392,8 @@ def toggle_order_completion(order_id):
 
 @bp.route("/production_schedule")
 def production_schedule():
-    orders = Order.query.filter_by(completed=False).all()
+    store = get_store(current_app)
+    orders = [order for order in store.list_orders(include_completed=True, order_desc=False) if not order.completed]
     include_sundays = request.args.get("include_sundays") == "1"
     schedule, summary = build_production_schedule(orders, include_sundays=include_sundays)
 
@@ -380,9 +403,9 @@ def production_schedule():
 
     return render_template(
         "production_schedule.html",
-        total_pending=db.session.query(db.func.sum(Order.quantity_kgs)).filter_by(completed=False).scalar() or 0,
-        total_completed=db.session.query(db.func.sum(Order.quantity_kgs)).filter_by(completed=True).scalar() or 0,
-        total_orders=Order.query.count(),
+        total_pending=sum(float(order.quantity_kgs or 0) for order in store.list_orders(include_completed=True, order_desc=False) if not order.completed),
+        total_completed=sum(float(order.quantity_kgs or 0) for order in store.list_orders(include_completed=True, order_desc=False) if order.completed),
+        total_orders=len(store.list_orders(include_completed=True, order_desc=False)),
         schedule=schedule,
         summary=summary,
         mk_label=mk_label,
@@ -393,11 +416,12 @@ def production_schedule():
 
 @bp.route("/grouped-lines")
 def grouped_lines():
-    orders = Order.query.order_by(Order.completed.asc(), Order.id.asc()).all()
+    store = get_store(current_app)
+    orders = store.list_orders(include_completed=True, order_desc=False)
     grouped_lines = _group_order_lines_for_view(orders)
     total_pending_kgs = 0.0
     total_pending_pcs = 0
-    for order in Order.query.all():
+    for order in orders:
         if order.completed:
             continue
         for line in order.lines:
@@ -411,8 +435,8 @@ def grouped_lines():
     return render_template(
         "grouped_lines.html",
         grouped_lines=grouped_lines,
-        total_orders=Order.query.count(),
-        total_lines=OrderLine.query.count(),
+        total_orders=len(orders),
+        total_lines=sum(len(getattr(order, "lines", [])) for order in orders),
         total_pending_kgs=total_pending_kgs,
         total_pending_pcs=total_pending_pcs,
         page_title="Grouped Lines",
