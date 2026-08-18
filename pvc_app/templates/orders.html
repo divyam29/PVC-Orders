@@ -2,8 +2,8 @@
 {% block content %}
 <h2 class="mb-4">All Orders</h2>
 
-<div class="card mb-4">
-  <div class="card-header d-flex justify-content-between align-items-center">
+<div class="card mb-4 orders-section-card">
+  <div class="card-header d-flex justify-content-between align-items-center orders-section-header">
     <button class="btn btn-link p-0 text-decoration-none text-reset fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#activeOrdersSection" aria-expanded="true" aria-controls="activeOrdersSection">
       Order Table
     </button>
@@ -12,8 +12,8 @@
   <div class="collapse show" id="activeOrdersSection">
     <div class="card-body p-0">
       <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-          <thead class="table-primary">
+        <table class="table table-hover align-middle mb-0 orders-modern-table">
+          <thead>
             <tr>
               <th style="width: 3rem;"></th>
               <th>ID</th>
@@ -25,7 +25,7 @@
           </thead>
           <tbody>
             {% for order in open_orders %}
-            <tr class="{% if order.completed %}opacity-50{% endif %}">
+            <tr class="orders-row {% if order.completed %}orders-row-muted{% endif %}">
               <td>
                 <button class="btn btn-sm btn-outline-secondary toggle-order-details" type="button" data-bs-toggle="collapse" data-bs-target="#order-details-{{ order.id }}" aria-expanded="false" aria-controls="order-details-{{ order.id }}">
                   +
@@ -42,14 +42,14 @@
             </tr>
             <tr>
               <td colspan="6" class="p-0 border-0">
-                <div class="collapse bg-body-tertiary border-top" id="order-details-{{ order.id }}">
+                <div class="collapse orders-detail-panel border-top" id="order-details-{{ order.id }}">
                   <div class="p-3">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                       <strong>Order Details</strong>
                       <span class="small text-muted">{{ order.color }} | {{ order.coating_type or 'Without Coating' }} | {{ order.design or '-' }}</span>
                     </div>
                     <div class="table-responsive">
-                      <table class="table table-sm table-striped align-middle mb-0 order-detail-table">
+                      <table class="table table-sm table-hover align-middle mb-0 order-detail-table">
                         <thead>
                           <tr>
                             <th>Pipe Type</th>
@@ -67,7 +67,7 @@
                         </thead>
                         <tbody>
                           {% for line in order.lines %}
-                          <tr class="{% if line.completed %}opacity-50{% endif %}">
+                          <tr class="orders-row {% if line.completed %}orders-row-muted{% endif %}">
                             <td>{{ line.pipe_type }}</td>
                             <td>{{ line.machine_type }}</td>
                             <td>{{ line.color }}</td>
@@ -103,8 +103,8 @@
 </div>
 
 {% if completed_orders and completed_orders|length %}
-<div class="card mb-4">
-  <div class="card-header d-flex justify-content-between align-items-center">
+<div class="card mb-4 orders-section-card">
+  <div class="card-header d-flex justify-content-between align-items-center orders-section-header">
     <button class="btn btn-link p-0 text-decoration-none text-reset fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#completedOrdersSection" aria-expanded="false" aria-controls="completedOrdersSection">
       Completed Orders
     </button>
@@ -115,7 +115,7 @@
       <div class="d-grid gap-3">
         {% for order in completed_orders %}
           {% set order_id = "completed-order-details-" ~ order.id %}
-          <div class="card order-summary-card opacity-50">
+          <div class="card order-summary-card orders-order-card orders-row-muted">
             <div class="card-body">
               <button class="order-summary-toggle w-100 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#{{ order_id }}" aria-expanded="false" aria-controls="{{ order_id }}">
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
@@ -134,13 +134,13 @@
                   </div>
                 </div>
               </button>
-              <div class="collapse mt-4" id="{{ order_id }}">
+              <div class="collapse mt-4 orders-detail-panel" id="{{ order_id }}">
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
                   <strong>Order Details</strong>
                   <span class="small text-muted">{{ order.color }} | {{ order.coating_type or 'Without Coating' }} | {{ order.design or '-' }}</span>
                 </div>
                 <div class="table-responsive">
-                  <table class="table table-sm table-striped align-middle mb-0 order-detail-table">
+                  <table class="table table-sm table-hover align-middle mb-0 order-detail-table">
                     <thead>
                       <tr>
                         <th>Pipe Type</th>
@@ -158,7 +158,7 @@
                     </thead>
                     <tbody>
                       {% for line in order.lines %}
-                      <tr class="{% if line.completed %}opacity-50{% endif %}">
+                      <tr class="orders-row {% if line.completed %}orders-row-muted{% endif %}">
                         <td>{{ line.pipe_type }}</td>
                         <td>{{ line.machine_type }}</td>
                         <td>{{ line.color }}</td>
@@ -189,8 +189,8 @@
 </div>
 {% endif %}
 
-<div class="card">
-  <div class="card-header d-flex justify-content-between align-items-center">
+<div class="card orders-section-card">
+  <div class="card-header d-flex justify-content-between align-items-center orders-section-header">
     <button class="btn btn-link p-0 text-decoration-none text-reset fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#groupedLinesSection" aria-expanded="false" aria-controls="groupedLinesSection">
       Grouped Order Lines
     </button>
@@ -209,8 +209,8 @@
       {% if grouped_lines and grouped_lines|length %}
         {% for machine, outer_groups in grouped_lines.items() %}
           {% set machine_id = "orders-machine-" ~ loop.index %}
-          <div class="card mb-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
+          <div class="card mb-3 orders-group-card">
+            <div class="card-header d-flex justify-content-between align-items-center orders-section-header">
               <button class="btn btn-link p-0 text-decoration-none text-reset fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#{{ machine_id }}" aria-expanded="false" aria-controls="{{ machine_id }}">
                 <div class="small text-secondary text-uppercase">Machine Group</div>
                 <strong>{{ "Braided" if machine == "braided" else machine }}</strong>
@@ -225,7 +225,7 @@
                   {% for size, payload in outer_groups.items() %}
                     {% set items = payload["items"] %}
                     {% set size_id = machine_id ~ "-size-" ~ loop.index %}
-                    <div class="border rounded p-3 mb-3">
+                    <div class="border rounded p-3 mb-3 orders-group-card">
                       <div class="d-flex justify-content-between align-items-center mb-3">
                         <button class="btn btn-link p-0 text-decoration-none text-reset fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#{{ size_id }}" aria-expanded="false" aria-controls="{{ size_id }}">
                           <div class="small text-secondary text-uppercase">Size</div>
@@ -250,7 +250,7 @@
                               {% for item in items %}
                                 {% set order = item.order %}
                                 {% set line = item.line %}
-                                <tr class="{% if line.completed %}opacity-50 table-secondary{% endif %}">
+                                <tr class="orders-row {% if line.completed %}orders-row-muted{% endif %}">
                                   <td>#{{ order.id }}</td>
                                   <td>{{ order.client_name }}</td>
                                   <td>{{ order.color }}</td>
@@ -269,7 +269,7 @@
                   {% for coating, payload in outer_groups.items() %}
                     {% set designs = payload["groups"] %}
                     {% set coating_id = machine_id ~ "-coating-" ~ loop.index %}
-                    <div class="border rounded p-3 mb-3">
+                    <div class="border rounded p-3 mb-3 orders-group-card">
                       <div class="d-flex justify-content-between align-items-center mb-3">
                         <button class="btn btn-link p-0 text-decoration-none text-reset fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#{{ coating_id }}" aria-expanded="false" aria-controls="{{ coating_id }}">
                           <div class="small text-secondary text-uppercase">Coating Level</div>
@@ -281,7 +281,7 @@
                         {% for design, payload2 in designs.items() %}
                           {% set items = payload2["items"] %}
                           {% set design_id = coating_id ~ "-design-" ~ loop.index %}
-                          <div class="mb-3 border rounded p-3">
+                          <div class="mb-3 border rounded p-3 orders-group-card">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                               <button class="btn btn-link p-0 text-decoration-none text-reset fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#{{ design_id }}" aria-expanded="false" aria-controls="{{ design_id }}">
                                 <div class="small text-secondary text-uppercase">Design</div>
@@ -307,7 +307,7 @@
                                     {% for item in items %}
                                       {% set order = item.order %}
                                       {% set line = item.line %}
-                                      <tr class="{% if line.completed %}opacity-50 table-secondary{% endif %}">
+                                      <tr class="orders-row {% if line.completed %}orders-row-muted{% endif %}">
                                         <td>#{{ order.id }}</td>
                                         <td>{{ order.client_name }}</td>
                                         <td>{{ order.color }}</td>
