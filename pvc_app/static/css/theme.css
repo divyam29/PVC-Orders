@@ -288,6 +288,98 @@ a, a:hover{ color: var(--accent); text-decoration: none; }
   border-color: rgba(148,163,184,.18);
 }
 
+/* Mobile: keep tables readable by letting them scroll horizontally instead of wrapping into stacked letters */
+.table-responsive{
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px){
+  .container{
+    max-width: 100%;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .card{
+    border-radius: 16px;
+  }
+
+  .orders-section-header{
+    padding: .85rem 1rem;
+    gap: .75rem;
+  }
+
+  .orders-modern-table,
+  .order-detail-table,
+  .grouped-lines-table,
+  .dashboard-detail-table{
+    min-width: 860px;
+    table-layout: auto;
+  }
+
+  .orders-modern-table th,
+  .orders-modern-table td,
+  .order-detail-table th,
+  .order-detail-table td,
+  .grouped-lines-table th,
+  .grouped-lines-table td,
+  .dashboard-detail-table th,
+  .dashboard-detail-table td{
+    white-space: nowrap;
+    word-break: normal;
+    overflow-wrap: normal;
+  }
+
+  .order-detail-design,
+  .dashboard-detail-design{
+    max-width: none;
+  }
+
+  .order-progress{
+    width: min(70vw, 420px);
+    min-width: 160px;
+  }
+
+  .order-summary-party{
+    font-size: 1.1rem;
+  }
+
+  .order-summary-percent{
+    font-size: 1rem;
+  }
+
+  .orders-group-card,
+  .orders-detail-panel{
+    border-radius: 14px;
+  }
+
+  .btn{
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 480px){
+  h1,h2{
+    font-size: clamp(1.8rem, 8vw, 2.3rem);
+  }
+
+  .orders-modern-table,
+  .order-detail-table,
+  .grouped-lines-table,
+  .dashboard-detail-table{
+    min-width: 720px;
+  }
+
+  .orders-section-header .badge,
+  .dashboard-badge{
+    font-size: .8rem;
+  }
+
+  .card-body{
+    padding: .85rem;
+  }
+}
+
 .order-summary-card{
   overflow: hidden;
 }
