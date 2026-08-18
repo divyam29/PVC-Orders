@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from typing import Any
 
 from pymongo.errors import InvalidURI
+from pymongo.errors import ServerSelectionTimeoutError
 from pymongo import MongoClient
 
 from .extensions import db
@@ -143,6 +144,7 @@ class MongoStore(BaseStore):
         self.designs = self.db.designs
         self._indexes_ready = False
         self._ensure_indexes()
+        self._verify_connection()
 
     @staticmethod
     def _escape_credentials(uri: str) -> str:
@@ -180,6 +182,14 @@ class MongoStore(BaseStore):
             self._indexes_ready = True
         except Exception as exc:
             logger.warning("Mongo index setup failed: %s", exc)
+
+    def _verify_connection(self):
+        try:
+            self.client.admin.command("ping")
+        except ServerSelectionTimeoutError as exc:
+            raise ConnectionError(f"MongoDB unavailable: {exc}") from exc
+        except Exception as exc:
+            raise ConnectionError(f"MongoDB unavailable: {exc}") from exc
 
     def _next_id(self, collection, field="id") -> int:
         doc = collection.find_one(sort=[(field, -1)], projection={field: 1}) or {}
