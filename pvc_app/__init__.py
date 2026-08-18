@@ -1,5 +1,6 @@
 from flask import Flask
 import os
+import tempfile
 from sqlalchemy import inspect, text
 from .extensions import db
 from .urls import register_urls
@@ -7,7 +8,13 @@ from .cli import clear_all_data, generate_schedule_stress_data, generate_test_or
 
 
 def create_app(test_config: dict | None = None):
-    app = Flask(__name__, static_folder="static", template_folder="templates")
+    instance_path = os.path.join(tempfile.gettempdir(), "pvc-orders-instance")
+    app = Flask(
+        __name__,
+        static_folder="static",
+        template_folder="templates",
+        instance_path=instance_path,
+    )
     # default config
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///pvc.db"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
