@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+  <div>
+    <div class="utility-bar"><div class="title">{{ page_title or "Dashboard" }}</div></div>
+    <div class="text-secondary">Grouped order lines with collapsible machine, coating, design, and size sections.</div>
+  </div>
+  <div class="text-end">
+    <div class="small text-uppercase text-secondary">Summary</div>
+    <div class="fw-semibold">{{ "%.2f"|format(total_pending_kgs or 0) }} kgs | {{ total_pending_pcs or 0 }} pcs across {{ total_lines }} active lines</div>
+  </div>
+</div>
+
+{% if grouped_lines|length == 0 %}
+  <div class="alert alert-success">No order lines found.</div>
+{% else %}
+  {% for machine, outer_groups in grouped_lines.items() %}
+    {% set machine_id = "machine-" ~ loop.index %}
+    <div class="card mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <button class="btn btn-link p-0 text-decoration-none text-reset fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#{{ machine_id }}" aria-expanded="false" aria-controls="{{ machine_id }}">
+          <div class="small text-secondary text-uppercase">Machine Group</div>
+          <strong>{{ "Braided" if machine == "braided" else machine }}</strong>
+        </button>
+        <span class="badge dashboard-badge dashboard-badge-info">
+          {% if machine == "braided" %}
+            {{ "%.2f"|format(outer_groups.values()|map(attribute='total_kgs')|sum) }} kgs
+          {% else %}
+            {{ "%.2f"|format(outer_groups.values()|map(attribute='total_kgs')|sum) }} kgs
+          {% endif %}
+        </span>
+      </div>
+      <div class="collapse show" id="{{ machine_id }}">
+        <div class="card-body">
+          {% if machine == "braided" %}
+            {% for size, payload in outer_groups.items() %}
+              {% set items = payload["items"] %}
+              {% set size_id = machine_id ~ "-size-" ~ loop.index %}
+              <div class="border rounded p-3 mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <button class="btn btn-link p-0 text-decoration-none text-reset fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#{{ size_id }}" aria-expanded="false" aria-controls="{{ size_id }}">
+                    <div class="small text-secondary text-uppercase">Size</div>
+                    <strong>{{ size }}</strong>
+                  </button>
+                  <span class="badge dashboard-badge dashboard-badge-dark">{{ "%.2f"|format(payload.total_kgs) }} kgs | {{ payload.total_pcs }} pcs</span>
+                </div>
+                <div class="collapse show" id="{{ size_id }}">
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0 grouped-lines-table">
+                      <thead>
+                        <tr>
+                          <th>Order</th>
+                          <th>Client</th>
+                          <th>Color</th>
+                          <th>PCS</th>
+                          <th>Length</th>
+                          <th>Total</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for item in items %}
+                          {% set order = item.order %}
+                          {% set line = item.line %}
+                          <tr class="{% if line.completed %}opacity-50 table-secondary{% endif %}">
+                            <td>#{{ order.id }}</td>
+                            <td>{{ order.client_name }}</td>
+                            <td>{{ order.color }}</td>
+                            <td>{{ line.quantity_pcs }}</td>
+                            <td>{{ line.length or '-' }}</td>
+                            <td>{{ "%.2f"|format(line.quantity_kgs) }} kgs</td>
+                            <td>
+                              {% if line.completed %}
+                                <span class="badge dashboard-badge dashboard-badge-success">Completed</span>
+                              {% else %}
+                                <span class="badge dashboard-badge dashboard-badge-neutral">Pending</span>
+                              {% endif %}
+                            </td>
+                          </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          {% else %}
+            {% for coating, payload in outer_groups.items() %}
+              {% set designs = payload["groups"] %}
+              {% set coating_id = machine_id ~ "-coating-" ~ loop.index %}
+              <div class="border rounded p-3 mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <button class="btn btn-link p-0 text-decoration-none text-reset fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#{{ coating_id }}" aria-expanded="false" aria-controls="{{ coating_id }}">
+                    <div class="small text-secondary text-uppercase">Coating Level</div>
+                    <strong>{{ coating }}</strong>
+                  </button>
+                  <span class="badge dashboard-badge dashboard-badge-neutral">{{ "%.2f"|format(payload.total_kgs) }} kgs | {{ payload.total_pcs }} pcs</span>
+                </div>
+                <div class="collapse show" id="{{ coating_id }}">
+                  {% for design, payload2 in designs.items() %}
+                    {% set items = payload2["items"] %}
+                    {% set design_id = coating_id ~ "-design-" ~ loop.index %}
+                    <div class="mb-3 border rounded p-3">
+                      <div class="d-flex justify-content-between align-items-center mb-2">
+                        <button class="btn btn-link p-0 text-decoration-none text-reset fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#{{ design_id }}" aria-expanded="false" aria-controls="{{ design_id }}">
+                          <div class="small text-secondary text-uppercase">Design</div>
+                          <strong>{{ design }}</strong>
+                        </button>
+                        <span class="badge dashboard-badge dashboard-badge-dark">{{ "%.2f"|format(payload2.total_kgs) }} kgs | {{ payload2.total_pcs }} pcs</span>
+                      </div>
+                      <div class="collapse show" id="{{ design_id }}">
+                        <div class="table-responsive">
+                          <table class="table table-sm table-hover align-middle mb-0 grouped-lines-table">
+                            <thead>
+                              <tr>
+                                <th>Order</th>
+                                <th>Client</th>
+                                <th>Color</th>
+                                <th>Size</th>
+                                <th>PCS</th>
+                                <th>Length</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {% for item in items %}
+                                {% set order = item.order %}
+                                {% set line = item.line %}
+                                <tr class="{% if line.completed %}opacity-50 table-secondary{% endif %}">
+                                  <td>#{{ order.id }}</td>
+                                  <td>{{ order.client_name }}</td>
+                                  <td>{{ order.color }}</td>
+                                  <td>{{ line.size_inches }}</td>
+                                  <td>{{ line.quantity_pcs }}</td>
+                                  <td>{{ line.length or '-' }}</td>
+                                  <td>{{ "%.2f"|format(line.quantity_kgs) }} kgs</td>
+                                  <td>
+                                    {% if line.completed %}
+                                      <span class="badge dashboard-badge dashboard-badge-success">Completed</span>
+                                    {% else %}
+                                      <span class="badge dashboard-badge dashboard-badge-neutral">Pending</span>
+                                    {% endif %}
+                                  </td>
+                                </tr>
+                              {% endfor %}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+            {% endfor %}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+{% endif %}
+{% endblock %}

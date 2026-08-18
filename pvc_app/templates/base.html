@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{{ title if title else "PVC Orders" }}</title>
+  <meta name="theme-color" content="#0b0f14" />
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="{{ url_for('static', filename='css/theme.css') }}" rel="stylesheet" />
 </head>
@@ -17,7 +19,6 @@
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav ms-auto">
           <li class="nav-item"><a class="nav-link" href="{{ url_for('main.dashboard') }}">Dashboard</a></li>
-          <!-- <li class="nav-item"><a class="nav-link" href="{{ url_for('main.production_schedule') }}">Production Schedule</a></li> -->
           <li class="nav-item"><a class="nav-link" href="{{ url_for('main.view_orders') }}">View Orders</a></li>
           <li class="nav-item"><a class="nav-link" href="{{ url_for('main.add_order') }}">Add Order</a></li>
           <li class="nav-item ms-2 d-flex align-items-center">
@@ -31,6 +32,15 @@
   </nav>
 
   <div class="container py-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="mb-3">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }} mb-2" role="alert">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
     {% block content %}{% endblock %}
   </div>
 
@@ -55,7 +65,12 @@
       localStorage.setItem('theme', root.classList.contains('light') ? 'light' : 'dark');
       applyIcon();
     });
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('{{ url_for("static", filename="sw.js") }}').catch(() => {});
+      });
+    }
   </script>
 </body>
 </html>
-

@@ -11,6 +11,14 @@
   </div>
 </div>
 
+<form method="GET" class="d-flex flex-wrap gap-2 align-items-center mb-4">
+  <div class="form-check form-switch mb-0">
+    <input class="form-check-input" type="checkbox" role="switch" id="includeSundays" name="include_sundays" value="1" {% if include_sundays %}checked{% endif %}>
+    <label class="form-check-label" for="includeSundays">Include Sundays</label>
+  </div>
+  <button type="submit" class="btn btn-secondary btn-sm">Refresh Schedule</button>
+</form>
+
 <div class="row g-3 mb-4">
   <div class="col-md-4">
     <div class="card p-3 h-100">
@@ -39,14 +47,17 @@
     <div class="card mb-4">
       <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
         <div>
-          <div class="small text-secondary text-uppercase">Production Day</div>
-          <strong>Day: {{ day.day }}</strong>
+          <button class="btn btn-link p-0 text-decoration-none text-reset fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#day-{{ loop.index }}" aria-expanded="false" aria-controls="day-{{ loop.index }}">
+            <div class="small text-secondary text-uppercase">Production Day</div>
+            <strong>Day: {{ day.day }}</strong>
+          </button>
         </div>
         <div class="d-flex gap-2">
           <span class="badge dashboard-badge dashboard-badge-neutral">Total: {{ "%.2f"|format(day.total_kgs) }} kgs</span>
           <span class="badge dashboard-badge dashboard-badge-dark">Shifts: {{ day.shifts|length }}</span>
         </div>
       </div>
+      <div class="collapse show" id="day-{{ loop.index }}">
       <div class="card-body">
         {% if day.shifts|length == 0 %}
           <div class="text-secondary">No work planned.</div>
@@ -78,7 +89,7 @@
                         <span class="badge dashboard-badge dashboard-badge-info">{{ "%.2f"|format(machine_total.value) }} kgs</span>
                       </div>
                       <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle mb-0">
+                        <table class="table table-sm table-hover align-middle mb-0 dashboard-detail-table">
                           <thead>
                             <tr>
                               <th style="width: 8%">Order</th>
@@ -86,9 +97,10 @@
                               <th style="width: 10%">Size</th>
                               <th style="width: 10%">PCS</th>
                               <th style="width: 10%">Length</th>
+                              <th style="width: 14%">Design</th>
                               <th style="width: 12%">Allocated</th>
-                              <th style="width: 12%">Deadline</th>
                               <th style="width: 8%">Status</th>
+                              <th style="width: 10%">Action</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -96,21 +108,27 @@
                               {% for al in batch.orders %}
                                 {% set item = al.item if al.item is defined else al.order %}
                                 {% set parent = item.order if item.order is defined else item %}
-                                <tr>
+                                <tr class="{% if item.completed %}opacity-50 table-secondary{% endif %}">
                                   <td>#{{ item.id }}</td>
                                   <td>{{ parent.client_name }}</td>
                                   <td>{{ item.size_inches }}</td>
                                   <td>{{ item.quantity_pcs if item.quantity_pcs is defined else '-' }}</td>
                                   <td>{{ item.length or '-' }}</td>
+                                  <td class="dashboard-detail-design">{{ item.design or parent.design or '-' }}</td>
                                   <td>{{ "%.2f"|format(al.kgs) }} kgs</td>
-                                  <td>{{ item.expected_delivery }}</td>
                                   <td>
-                                    {% set late = summary.get(item.id, {}).get('late', false) %}
-                                    {% if late %}
-                                      <span class="badge dashboard-badge dashboard-badge-danger">Late</span>
+                                    {% if item.completed %}
+                                      <span class="badge dashboard-badge dashboard-badge-success">Completed</span>
                                     {% else %}
-                                      <span class="badge dashboard-badge dashboard-badge-success">On-time</span>
+                                      <span class="badge dashboard-badge dashboard-badge-neutral">Pending</span>
                                     {% endif %}
+                                  </td>
+                                  <td>
+                                    <form method="POST" action="{{ url_for('main.toggle_line_completion', line_id=item.id) }}">
+                                      <button type="submit" class="btn btn-sm {% if item.completed %}btn-secondary{% else %}btn-primary{% endif %}">
+                                        {% if item.completed %}Mark Incomplete{% else %}Complete{% endif %}
+                                      </button>
+                                    </form>
                                   </td>
                                 </tr>
                               {% endfor %}
@@ -125,6 +143,7 @@
             </div>
           {% endfor %}
         {% endif %}
+      </div>
       </div>
     </div>
   {% endfor %}

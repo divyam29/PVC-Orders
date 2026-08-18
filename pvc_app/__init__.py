@@ -1,4 +1,5 @@
 from flask import Flask
+import os
 from sqlalchemy import inspect, text
 from .extensions import db
 from .urls import register_urls
@@ -10,8 +11,14 @@ def create_app(test_config: dict | None = None):
     # default config
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///pvc.db"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    app.config["MONGODB_URI"] = os.environ.get("MONGODB_URI")
     if test_config:
         app.config.update(test_config)
+    if test_config and test_config.get("MONGODB_URI"):
+        app.config["MONGODB_URI"] = test_config["MONGODB_URI"]
+    if not app.config.get("SECRET_KEY"):
+        app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-pvc-orders-secret-key")
+    app.secret_key = app.config["SECRET_KEY"]
 
     # init extensions
     db.init_app(app)
@@ -25,7 +32,7 @@ def create_app(test_config: dict | None = None):
     app.cli.add_command(clear_all_data)
 
     # create tables on startup (skip when testing; tests control schema lifecycle)
-    if not app.config.get("TESTING"):
+    if not app.config.get("TESTING") and not app.config.get("MONGODB_URI"):
         with app.app_context():
             db.create_all()
             _sync_sqlite_schema()
@@ -56,6 +63,8 @@ def _sync_sqlite_schema():
         alterations.append("ALTER TABLE \"order\" ADD COLUMN coating_type VARCHAR(50)")
     if "design" not in columns:
         alterations.append("ALTER TABLE \"order\" ADD COLUMN design VARCHAR(120)")
+    if "created_at" not in columns:
+        alterations.append("ALTER TABLE \"order\" ADD COLUMN created_at DATETIME")
 
     if "order_line" in existing_tables:
         line_columns = {col["name"] for col in inspector.get_columns("order_line")}
@@ -65,6 +74,8 @@ def _sync_sqlite_schema():
             alterations.append("ALTER TABLE order_line ADD COLUMN quantity_pcs INTEGER DEFAULT 0 NOT NULL")
         if "weight_per_piece_kg" not in line_columns:
             alterations.append("ALTER TABLE order_line ADD COLUMN weight_per_piece_kg FLOAT DEFAULT 0 NOT NULL")
+        if "created_at" not in line_columns:
+            alterations.append("ALTER TABLE order_line ADD COLUMN created_at DATETIME")
 
     with db.engine.begin() as conn:
         for stmt in alterations:

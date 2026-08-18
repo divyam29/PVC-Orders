@@ -64,9 +64,8 @@
 </template>
 
 <template id="subrowTemplate">
-  <div class="row g-3 align-items-end subrow mb-2 position-relative">
-    <button type="button" class="remove-subrow-btn" aria-label="Delete row" title="Delete row">×</button>
-    <div class="col-md-3">
+  <div class="row g-2 align-items-end subrow mb-2">
+    <div class="col-6 col-md-2">
       <label class="form-label">Size</label>
       <select class="form-select size-field" name="size_inches_0_0" required>
         {% for s in sizes %}
@@ -74,17 +73,20 @@
         {% endfor %}
       </select>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
       <label class="form-label">Quantity (no of pcs)</label>
       <input type="number" step="1" class="form-control qty-field" name="quantity_pcs_0_0" required>
     </div>
-    <div class="col-md-3">
+    <div class="col-6 col-md-3">
       <label class="form-label">Weight per bundle (kgs)</label>
       <input type="number" step="0.01" class="form-control weight-field" name="bundle_weight_0_0">
     </div>
-    <div class="col-md-3">
+    <div class="col-10 col-md-3">
       <label class="form-label">Length per bundle (meters)</label>
       <input type="text" class="form-control length-field" name="length_0_0" value="30" placeholder="e.g. 30">
+    </div>
+    <div class="col-2 col-md-1 d-flex justify-content-end align-items-end">
+      <button type="button" class="btn btn-sm btn-outline-danger remove-subrow-btn" aria-label="Remove size row">×</button>
     </div>
   </div>
 </template>
@@ -131,12 +133,15 @@
         sub.querySelector(".qty-field").name = `quantity_pcs_${i}_${j}`;
         sub.querySelector(".weight-field").name = `bundle_weight_${i}_${j}`;
         sub.querySelector(".length-field").name = `length_${i}_${j}`;
-        sub.querySelector(".remove-subrow-btn").onclick = () => {
-          if (subs.length > 1) {
-            sub.remove();
-            reindex();
-          }
-        };
+        const removeSubrowBtn = sub.querySelector(".remove-subrow-btn");
+        if (removeSubrowBtn) {
+          removeSubrowBtn.onclick = () => {
+            if (subs.length > 1) {
+              sub.remove();
+              reindex();
+            }
+          };
+        }
       });
       toggleGarden(row);
       refreshDesigns(row);
@@ -176,7 +181,10 @@
     row.querySelector(".pipe-type").addEventListener("change", () => { toggleGarden(row); reindex(); });
     row.querySelector(".coating-type").addEventListener("change", () => refreshDesigns(row));
     orderTypeRows.appendChild(frag);
-    addSubrow(row);
+    if (!prefill) {
+      addSubrow(row);
+      return;
+    }
     reindex();
   }
 

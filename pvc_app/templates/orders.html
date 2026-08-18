@@ -2,159 +2,356 @@
 {% block content %}
 <h2 class="mb-4">All Orders</h2>
 
-<form method="GET" class="row g-3 mb-4">
-    <div class="col-md-2">
-        <label class="form-label">Size</label>
-        <select name="size" class="form-select">
-            <option value="">Any</option>
-            {% for s in sizes %}
-                <option value="{{ s }}" {% if request.args.get('size') == s %}selected{% endif %}>{{ s }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="col-md-2">
-        <label class="form-label">Machine</label>
-        <select name="field" class="form-select">
-            <option value="machine_type" {% if request.args.get('field') == 'machine_type' %}selected{% endif %}>Machine</option>
-            <option value="coating_type" {% if request.args.get('field') == 'coating_type' %}selected{% endif %}>Coating Type</option>
-            <option value="design" {% if request.args.get('field') == 'design' %}selected{% endif %}>Design</option>
-        </select>
-    </div>
-    <div class="col-md-2">
-        <label class="form-label">Completed</label>
-        <select name="completed" class="form-select">
-            <option value="" {% if not request.args.get('completed') %}selected{% endif %}>Any</option>
-            <option value="true" {% if request.args.get('completed') == 'true' %}selected{% endif %}>Yes</option>
-            <option value="false" {% if request.args.get('completed') == 'false' %}selected{% endif %}>No</option>
-        </select>
-    </div>
-    <div class="col-md-3">
-        <label class="form-label">Filter Any Field</label>
-        <div class="input-group">
-            <select name="field" class="form-select" style="max-width: 50%">
-                {% for key, label in any_fields %}
-                    <option value="{{ key }}" {% if request.args.get('field') == key %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
-            <input type="text" name="value" value="{{ request.args.get('value','') }}" class="form-control" placeholder="contains / equals">
-        </div>
-    </div>
-    <div class="col-md-3">
-        <label class="form-label">Sort</label>
-        <div class="input-group">
-            <select name="sort_by" class="form-select">
-                {% for key, label in sort_fields %}
-                    <option value="{{ key }}" {% if request.args.get('sort_by') == key %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
-            <select name="sort_dir" class="form-select" style="max-width: 40%">
-                <option value="asc" {% if request.args.get('sort_dir','asc') == 'asc' %}selected{% endif %}>Asc</option>
-                <option value="desc" {% if request.args.get('sort_dir') == 'desc' %}selected{% endif %}>Desc</option>
-            </select>
-        </div>
-    </div>
-    <div class="col-12 d-flex gap-2">
-        <button type="submit" class="btn btn-primary">Apply</button>
-        <a href="{{ url_for('main.view_orders') }}" class="btn btn-secondary">Clear</a>
-    </div>
-</form>
-
-<div class="card shadow-sm">
-    <div class="table-responsive">
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <button class="btn btn-link p-0 text-decoration-none text-reset fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#activeOrdersSection" aria-expanded="true" aria-controls="activeOrdersSection">
+      Order Table
+    </button>
+    <span class="badge dashboard-badge dashboard-badge-info">{{ open_orders|length }} active</span>
+  </div>
+  <div class="collapse show" id="activeOrdersSection">
+    <div class="card-body p-0">
+      <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
-            <thead class="table-primary">
-                <tr>
-                    <th style="width: 3rem;"></th>
-                    <th>ID</th>
-                    <th>Client</th>
-                    <th>Total Weight</th>
-                    <th>Machine</th>
-                    <th>Completed</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for order in orders %}
-                <tr>
-                    <td>
-                        <button class="btn btn-sm btn-outline-secondary toggle-order-details" type="button" data-bs-toggle="collapse" data-bs-target="#order-details-{{ order.id }}" aria-expanded="false" aria-controls="order-details-{{ order.id }}">
-                            +
-                        </button>
-                    </td>
-                    <td>{{ order.id }}</td>
-                    <td>{{ order.client_name }}</td>
-                    <td>{{ "%.2f"|format(order.quantity_kgs) }} kgs</td>
-                    <td>{{ order.machine_type }}</td>
-                    <td>
-                        {% if order.completed %}
-                            <span class="badge bg-success">Yes</span>
-                        {% else %}
-                            <span class="badge bg-warning text-dark">No</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <a href="{{ url_for('main.edit_order', order_id=order.id) }}" class="btn btn-sm btn-warning">Edit</a>
-                        <a href="{{ url_for('main.delete_order', order_id=order.id) }}" class="btn btn-sm btn-danger"
-                           onclick="return confirm('Are you sure you want to delete this order?')">Delete</a>
-                    </td>
-                </tr>
-                <tr>
-                    <td colspan="7" class="p-0 border-0">
-                        <div class="collapse bg-body-tertiary border-top" id="order-details-{{ order.id }}">
-                            <div class="p-3">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <strong>Order Details</strong>
-                                <span class="small text-muted">{{ order.color }} | {{ order.coating_type or 'Without Coating' }} | {{ order.design or '-' }}</span>
-                            </div>
-                            <div class="table-responsive">
-                                <table class="table table-sm table-striped align-middle mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th>Pipe Type</th>
-                                            <th>Machine</th>
-                                            <th>Color</th>
-                                            <th>Coating</th>
-                                            <th>Design</th>
-                                            <th>Size</th>
-                                            <th>PCS</th>
-                                            <th>Wt / PC (kg)</th>
-                                            <th>Total (kg)</th>
-                                            <th>Length</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for line in order.lines %}
-                                        <tr>
-                                            <td>{{ line.pipe_type }}</td>
-                                            <td>{{ line.machine_type }}</td>
-                                            <td>{{ line.color }}</td>
-                                            <td>{{ line.coating_type or '-' }}</td>
-                                            <td>{{ line.design or '-' }}</td>
-                                            <td>{{ line.size_inches }}</td>
-                                            <td>{{ line.quantity_pcs }}</td>
-                                            <td>{{ "%.2f"|format(line.weight_per_piece_kg) }}</td>
-                                            <td>{{ "%.2f"|format(line.quantity_kgs) }}</td>
-                                            <td>{{ line.length or '-' }}</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
+          <thead class="table-primary">
+            <tr>
+              <th style="width: 3rem;"></th>
+              <th>ID</th>
+              <th>Client</th>
+              <th>Total Weight</th>
+              <th>Machine</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for order in open_orders %}
+            <tr class="{% if order.completed %}opacity-50{% endif %}">
+              <td>
+                <button class="btn btn-sm btn-outline-secondary toggle-order-details" type="button" data-bs-toggle="collapse" data-bs-target="#order-details-{{ order.id }}" aria-expanded="false" aria-controls="order-details-{{ order.id }}">
+                  +
+                </button>
+              </td>
+              <td>{{ order.id }}</td>
+              <td>{{ order.client_name }}</td>
+              <td>{{ "%.2f"|format(order.quantity_kgs) }} kgs</td>
+              <td>{{ order.machine_type }}</td>
+              <td class="d-flex gap-2 flex-wrap">
+                <a href="{{ url_for('main.edit_order', order_id=order.id) }}" class="btn btn-sm btn-warning">Edit</a>
+                <a href="{{ url_for('main.delete_order', order_id=order.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this order?')">Delete</a>
+              </td>
+            </tr>
+            <tr>
+              <td colspan="6" class="p-0 border-0">
+                <div class="collapse bg-body-tertiary border-top" id="order-details-{{ order.id }}">
+                  <div class="p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                      <strong>Order Details</strong>
+                      <span class="small text-muted">{{ order.color }} | {{ order.coating_type or 'Without Coating' }} | {{ order.design or '-' }}</span>
+                    </div>
+                    <div class="table-responsive">
+                      <table class="table table-sm table-striped align-middle mb-0 order-detail-table">
+                        <thead>
+                          <tr>
+                            <th>Pipe Type</th>
+                            <th>Machine</th>
+                            <th>Color</th>
+                            <th>Coating</th>
+                            <th>Design</th>
+                            <th>Size</th>
+                            <th>PCS</th>
+                            <th>Wt / PC (kg)</th>
+                            <th>Total (kg)</th>
+                            <th>Length</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {% for line in order.lines %}
+                          <tr class="{% if line.completed %}opacity-50{% endif %}">
+                            <td>{{ line.pipe_type }}</td>
+                            <td>{{ line.machine_type }}</td>
+                            <td>{{ line.color }}</td>
+                            <td>{{ line.coating_type or '-' }}</td>
+                            <td class="order-detail-design">{{ line.design or '-' }}</td>
+                            <td>{{ line.size_inches }}</td>
+                            <td>{{ line.quantity_pcs }}</td>
+                            <td>{{ "%.2f"|format(line.weight_per_piece_kg) }}</td>
+                            <td>{{ "%.2f"|format(line.quantity_kgs) }}</td>
+                            <td>{{ line.length or '-' }}</td>
+                            <td>
+                              <form method="POST" action="{{ url_for('main.toggle_line_completion', line_id=line.id) }}">
+                                <button type="submit" class="btn btn-sm {% if line.completed %}btn-secondary{% else %}btn-success{% endif %}">
+                                  {% if line.completed %}Incomplete{% else %}Complete{% endif %}
+                                </button>
+                              </form>
+                            </td>
+                          </tr>
+                          {% endfor %}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
         </table>
+      </div>
     </div>
+  </div>
 </div>
+
+{% if completed_orders and completed_orders|length %}
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <button class="btn btn-link p-0 text-decoration-none text-reset fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#completedOrdersSection" aria-expanded="false" aria-controls="completedOrdersSection">
+      Completed Orders
+    </button>
+    <span class="badge dashboard-badge dashboard-badge-neutral">{{ completed_orders|length }} completed</span>
+  </div>
+  <div class="collapse" id="completedOrdersSection">
+    <div class="card-body">
+      <div class="d-grid gap-3">
+        {% for order in completed_orders %}
+          {% set order_id = "completed-order-details-" ~ order.id %}
+          <div class="card order-summary-card opacity-50">
+            <div class="card-body">
+              <button class="order-summary-toggle w-100 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#{{ order_id }}" aria-expanded="false" aria-controls="{{ order_id }}">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                  <div class="d-flex flex-column gap-1 flex-grow-1">
+                    <div class="d-flex flex-wrap align-items-center gap-3">
+                      <div class="order-summary-party">{{ order.client_name }}</div>
+                      <div class="text-secondary">{{ order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else "-" }}</div>
+                    </div>
+                    <div class="progress order-progress" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
+                      <div class="progress-bar bg-success" style="width: 100%"></div>
+                    </div>
+                  </div>
+                  <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <span class="order-summary-percent">100%</span>
+                    <span class="order-summary-chevron" aria-hidden="true">+</span>
+                  </div>
+                </div>
+              </button>
+              <div class="collapse mt-4" id="{{ order_id }}">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+                  <strong>Order Details</strong>
+                  <span class="small text-muted">{{ order.color }} | {{ order.coating_type or 'Without Coating' }} | {{ order.design or '-' }}</span>
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-sm table-striped align-middle mb-0 order-detail-table">
+                    <thead>
+                      <tr>
+                        <th>Pipe Type</th>
+                        <th>Machine</th>
+                        <th>Color</th>
+                        <th>Coating</th>
+                        <th>Design</th>
+                        <th>Size</th>
+                        <th>PCS</th>
+                        <th>Wt / PC (kg)</th>
+                        <th>Total (kg)</th>
+                        <th>Length</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for line in order.lines %}
+                      <tr class="{% if line.completed %}opacity-50{% endif %}">
+                        <td>{{ line.pipe_type }}</td>
+                        <td>{{ line.machine_type }}</td>
+                        <td>{{ line.color }}</td>
+                        <td>{{ line.coating_type or '-' }}</td>
+                        <td class="order-detail-design">{{ line.design or '-' }}</td>
+                        <td>{{ line.size_inches }}</td>
+                        <td>{{ line.quantity_pcs }}</td>
+                        <td>{{ "%.2f"|format(line.weight_per_piece_kg) }}</td>
+                        <td>{{ "%.2f"|format(line.quantity_kgs) }}</td>
+                        <td>{{ line.length or '-' }}</td>
+                        <td>
+                          <form method="POST" action="{{ url_for('main.toggle_line_completion', line_id=line.id) }}">
+                            <button type="submit" class="btn btn-sm btn-secondary">Incomplete</button>
+                          </form>
+                        </td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <button class="btn btn-link p-0 text-decoration-none text-reset fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#groupedLinesSection" aria-expanded="false" aria-controls="groupedLinesSection">
+      Grouped Order Lines
+    </button>
+    <span class="badge dashboard-badge dashboard-badge-info">{{ "%.2f"|format(total_grouped_kgs or 0) }} kgs</span>
+  </div>
+  <div class="collapse" id="groupedLinesSection">
+    <div class="card-body">
+      <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+        <div class="text-secondary">Order lines from different orders grouped by machine, coating, design, and size.</div>
+        <div class="text-end">
+          <div class="small text-uppercase text-secondary">Visible grouping total</div>
+          <div class="fw-semibold">{{ "%.2f"|format(total_grouped_kgs or 0) }} kgs | {{ total_grouped_pcs or 0 }} pcs</div>
+        </div>
+      </div>
+
+      {% if grouped_lines and grouped_lines|length %}
+        {% for machine, outer_groups in grouped_lines.items() %}
+          {% set machine_id = "orders-machine-" ~ loop.index %}
+          <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <button class="btn btn-link p-0 text-decoration-none text-reset fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#{{ machine_id }}" aria-expanded="false" aria-controls="{{ machine_id }}">
+                <div class="small text-secondary text-uppercase">Machine Group</div>
+                <strong>{{ "Braided" if machine == "braided" else machine }}</strong>
+              </button>
+              <span class="badge dashboard-badge dashboard-badge-info">
+                {{ "%.2f"|format(outer_groups.values()|map(attribute='total_kgs')|sum) }} kgs
+              </span>
+            </div>
+            <div class="collapse show" id="{{ machine_id }}">
+              <div class="card-body">
+                {% if machine == "braided" %}
+                  {% for size, payload in outer_groups.items() %}
+                    {% set items = payload["items"] %}
+                    {% set size_id = machine_id ~ "-size-" ~ loop.index %}
+                    <div class="border rounded p-3 mb-3">
+                      <div class="d-flex justify-content-between align-items-center mb-3">
+                        <button class="btn btn-link p-0 text-decoration-none text-reset fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#{{ size_id }}" aria-expanded="false" aria-controls="{{ size_id }}">
+                          <div class="small text-secondary text-uppercase">Size</div>
+                          <strong>{{ size }}</strong>
+                        </button>
+                        <span class="badge dashboard-badge dashboard-badge-dark">{{ "%.2f"|format(payload.total_kgs) }} kgs | {{ payload.total_pcs }} pcs</span>
+                      </div>
+                      <div class="collapse show" id="{{ size_id }}">
+                        <div class="table-responsive">
+                          <table class="table table-sm table-hover align-middle mb-0 grouped-lines-table">
+                            <thead>
+                              <tr>
+                                <th>Order</th>
+                                <th>Client</th>
+                                <th>Color</th>
+                                <th>PCS</th>
+                                <th>Length</th>
+                                <th>Total</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {% for item in items %}
+                                {% set order = item.order %}
+                                {% set line = item.line %}
+                                <tr class="{% if line.completed %}opacity-50 table-secondary{% endif %}">
+                                  <td>#{{ order.id }}</td>
+                                  <td>{{ order.client_name }}</td>
+                                  <td>{{ order.color }}</td>
+                                  <td>{{ line.quantity_pcs }}</td>
+                                  <td>{{ line.length or '-' }}</td>
+                                  <td>{{ "%.2f"|format(line.quantity_kgs) }} kgs</td>
+                                </tr>
+                              {% endfor %}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  {% endfor %}
+                {% else %}
+                  {% for coating, payload in outer_groups.items() %}
+                    {% set designs = payload["groups"] %}
+                    {% set coating_id = machine_id ~ "-coating-" ~ loop.index %}
+                    <div class="border rounded p-3 mb-3">
+                      <div class="d-flex justify-content-between align-items-center mb-3">
+                        <button class="btn btn-link p-0 text-decoration-none text-reset fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#{{ coating_id }}" aria-expanded="false" aria-controls="{{ coating_id }}">
+                          <div class="small text-secondary text-uppercase">Coating Level</div>
+                          <strong>{{ coating }}</strong>
+                        </button>
+                        <span class="badge dashboard-badge dashboard-badge-neutral">{{ "%.2f"|format(payload.total_kgs) }} kgs | {{ payload.total_pcs }} pcs</span>
+                      </div>
+                      <div class="collapse show" id="{{ coating_id }}">
+                        {% for design, payload2 in designs.items() %}
+                          {% set items = payload2["items"] %}
+                          {% set design_id = coating_id ~ "-design-" ~ loop.index %}
+                          <div class="mb-3 border rounded p-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                              <button class="btn btn-link p-0 text-decoration-none text-reset fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#{{ design_id }}" aria-expanded="false" aria-controls="{{ design_id }}">
+                                <div class="small text-secondary text-uppercase">Design</div>
+                                <strong>{{ design }}</strong>
+                              </button>
+                              <span class="badge dashboard-badge dashboard-badge-dark">{{ "%.2f"|format(payload2.total_kgs) }} kgs | {{ payload2.total_pcs }} pcs</span>
+                            </div>
+                            <div class="collapse show" id="{{ design_id }}">
+                              <div class="table-responsive">
+                                <table class="table table-sm table-hover align-middle mb-0 grouped-lines-table">
+                                  <thead>
+                                    <tr>
+                                      <th>Order</th>
+                                      <th>Client</th>
+                                      <th>Color</th>
+                                      <th>Size</th>
+                                      <th>PCS</th>
+                                      <th>Length</th>
+                                      <th>Total</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {% for item in items %}
+                                      {% set order = item.order %}
+                                      {% set line = item.line %}
+                                      <tr class="{% if line.completed %}opacity-50 table-secondary{% endif %}">
+                                        <td>#{{ order.id }}</td>
+                                        <td>{{ order.client_name }}</td>
+                                        <td>{{ order.color }}</td>
+                                        <td>{{ line.size_inches }}</td>
+                                        <td>{{ line.quantity_pcs }}</td>
+                                        <td>{{ line.length or '-' }}</td>
+                                        <td>{{ "%.2f"|format(line.quantity_kgs) }} kgs</td>
+                                      </tr>
+                                    {% endfor %}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
+                        {% endfor %}
+                      </div>
+                    </div>
+                  {% endfor %}
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="alert alert-success mb-0">No grouped lines found.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
 <script>
   document.querySelectorAll(".toggle-order-details").forEach(btn => {
     const target = document.querySelector(btn.getAttribute("data-bs-target"));
     if (!target) return;
     target.addEventListener("show.bs.collapse", () => { btn.textContent = "−"; });
     target.addEventListener("hide.bs.collapse", () => { btn.textContent = "+"; });
+  });
+  document.querySelectorAll(".order-summary-toggle").forEach(btn => {
+    const card = btn.closest(".order-summary-card");
+    const target = card ? card.querySelector(".collapse") : null;
+    const chevron = card ? card.querySelector(".order-summary-chevron") : null;
+    if (!target || !chevron) return;
+    target.addEventListener("show.bs.collapse", () => { chevron.textContent = "−"; });
+    target.addEventListener("hide.bs.collapse", () => { chevron.textContent = "+"; });
   });
 </script>
 {% endblock %}

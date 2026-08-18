@@ -1,32 +1,105 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="row g-3">
-  <div class="col-md-4">
-    <div class="card p-3 text-reset">
-      <div class="card-body">
-        <div class="small">Pending Orders</div>
-        <h4 class="mb-0">{{ total_pending }} KGs</h4>
-      </div>
-    </div>
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+  <div>
+    <div class="utility-bar"><div class="title">{{ page_title or "Dashboard" }}</div></div>
+    <div class="text-secondary">Latest orders first. Click a row to see full order details.</div>
   </div>
-  <div class="col-md-4">
-    <div class="card p-3 text-reset">
-      <div class="card-body">
-        <div class="small">Completed Orders</div>
-        <h4 class="mb-0">{{ total_completed }} KGs</h4>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-4">
-    <div class="card p-3 text-reset">
-      <div class="card-body">
-        <div class="small">Total Orders</div>
-        <h4 class="mb-0">{{ total_orders }}</h4>
-      </div>
-    </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <span class="badge dashboard-badge dashboard-badge-info">{{ total_orders }} orders</span>
+    <span class="badge dashboard-badge dashboard-badge-success">{{ total_completed_orders }} completed</span>
+    <span class="badge dashboard-badge dashboard-badge-neutral">{{ total_pending_orders }} pending</span>
   </div>
 </div>
 
-<a href="{{ url_for('main.view_orders') }}" class="btn btn-primary mt-4">View All Orders</a>
-{% endblock %}
+<div class="d-grid gap-3">
+  {% for order in orders %}
+    {% set line_count = order.lines|length %}
+    {% set completed_lines = order.lines|selectattr('completed')|list|length %}
+    {% set percent = ((completed_lines / line_count) * 100) if line_count else (100 if order.completed else 0) %}
+    {% set order_id = "order-details-" ~ order.id %}
+    <div class="card order-summary-card {% if order.completed %}opacity-50{% endif %}">
+      <div class="card-body">
+        <button class="order-summary-toggle w-100 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#{{ order_id }}" aria-expanded="false" aria-controls="{{ order_id }}">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex flex-column gap-1 flex-grow-1">
+              <div class="d-flex flex-wrap align-items-center gap-3">
+                <div class="order-summary-party">{{ order.client_name }}</div>
+                <div class="text-secondary">{{ order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else "-" }}</div>
+              </div>
+              <div class="progress order-progress" role="progressbar" aria-label="Order completion progress" aria-valuenow="{{ percent|round(0) }}" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar {% if order.completed %}bg-success{% else %}bg-info{% endif %}" style="width: {{ percent }}%"></div>
+              </div>
+            </div>
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+              <span class="order-summary-percent">{{ "%.0f"|format(percent) }}%</span>
+              <span class="order-summary-chevron" aria-hidden="true">+</span>
+            </div>
+          </div>
+        </button>
 
+        <div class="collapse mt-4" id="{{ order_id }}">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+            <strong>Order Details</strong>
+            <span class="small text-muted">{{ order.color }} | {{ order.coating_type or 'Without Coating' }} | {{ order.design or '-' }}</span>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm table-striped align-middle mb-0 order-detail-table">
+              <thead>
+                <tr>
+                  <th>Pipe Type</th>
+                  <th>Machine</th>
+                  <th>Color</th>
+                  <th>Coating</th>
+                  <th>Design</th>
+                  <th>Size</th>
+                  <th>PCS</th>
+                  <th>Wt / PC (kg)</th>
+                  <th>Total (kg)</th>
+                  <th>Length</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for line in order.lines %}
+                <tr class="{% if line.completed %}opacity-50{% endif %}">
+                  <td>{{ line.pipe_type }}</td>
+                  <td>{{ line.machine_type }}</td>
+                  <td>{{ line.color }}</td>
+                  <td>{{ line.coating_type or '-' }}</td>
+                  <td class="order-detail-design">{{ line.design or '-' }}</td>
+                  <td>{{ line.size_inches }}</td>
+                  <td>{{ line.quantity_pcs }}</td>
+                  <td>{{ "%.2f"|format(line.weight_per_piece_kg) }}</td>
+                  <td>{{ "%.2f"|format(line.quantity_kgs) }}</td>
+                  <td>{{ line.length or '-' }}</td>
+                  <td>
+                    <form method="POST" action="{{ url_for('main.toggle_line_completion', line_id=line.id) }}">
+                      <button type="submit" class="btn btn-sm {% if line.completed %}btn-secondary{% else %}btn-success{% endif %}">
+                        {% if line.completed %}Incomplete{% else %}Complete{% endif %}
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<script>
+  document.querySelectorAll(".order-summary-toggle").forEach(btn => {
+    const card = btn.closest(".order-summary-card");
+    const target = card ? card.querySelector(".collapse") : null;
+    const chevron = card ? card.querySelector(".order-summary-chevron") : null;
+    if (!target || !chevron) return;
+    target.addEventListener("show.bs.collapse", () => { chevron.textContent = "−"; });
+    target.addEventListener("hide.bs.collapse", () => { chevron.textContent = "+"; });
+  });
+</script>
+{% endblock %}

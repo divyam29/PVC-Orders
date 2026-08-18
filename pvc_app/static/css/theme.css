@@ -128,9 +128,6 @@ a, a:hover{ color: var(--accent); text-decoration: none; }
 
 /* compact row delete control */
 .remove-subrow-btn{
-  position:absolute;
-  top:8px;
-  right:8px;
   width:24px;
   height:24px;
   padding:0;
@@ -143,10 +140,100 @@ a, a:hover{ color: var(--accent); text-decoration: none; }
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  z-index: 2;
   cursor:pointer;
+  margin-bottom: 2px;
 }
 .remove-subrow-btn:hover{
   background: rgba(255,107,107,.12);
   color: var(--danger);
+}
+
+.order-detail-table{
+  table-layout: fixed;
+  width: 100%;
+}
+.order-detail-table th,
+.order-detail-table td,
+.dashboard-detail-table th,
+.dashboard-detail-table td{
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+.order-detail-design{
+  max-width: 180px;
+}
+.dashboard-detail-table{
+  table-layout: fixed;
+  width: 100%;
+}
+.dashboard-detail-design{
+  max-width: 180px;
+}
+
+.grouped-lines-table{
+  table-layout: fixed;
+  width: 100%;
+}
+.grouped-lines-table th,
+.grouped-lines-table td{
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.order-summary-card{
+  overflow: hidden;
+}
+
+.order-summary-toggle{
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: inherit;
+}
+
+.order-summary-toggle:focus{
+  outline: none;
+  box-shadow: none;
+}
+
+.order-summary-party{
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.order-summary-percent{
+  font-size: 1.1rem;
+  font-weight: 700;
+  min-width: 3rem;
+  text-align: right;
+}
+
+.order-summary-chevron{
+  display:inline-flex;
+  width: 2rem;
+  height: 2rem;
+  align-items:center;
+  justify-content:center;
+  border-radius: 999px;
+  background: #74808c;
+  color: #fff;
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.order-progress{
+  height: 12px;
+  min-width: 220px;
+  max-width: 520px;
+  width: min(52vw, 520px);
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+}
+
+:root.light .order-progress{
+  background: rgba(0,0,0,.08);
 }

@@ -6,6 +6,7 @@ from flask.cli import with_appcontext
 from .extensions import db
 from .models import Design, Order, OrderLine
 from .constants import COLORS, SIZES
+from .store import get_store
 
 logger = logging.getLogger("pvc_app.cli")
 
@@ -74,9 +75,9 @@ def generate_test_orders_impl() -> int:
             }
         )
 
+    store = get_store()
     for data in orders_data:
-        db.session.add(Order(**data))
-    db.session.commit()
+        store.create_order(data, [])
     logger.info("Generated %d test orders", len(orders_data))
     return len(orders_data)
 
@@ -103,25 +104,25 @@ def generate_schedule_stress_data_impl(
     line_count = 0
     today = datetime.now().date()
 
+    store = get_store()
     for idx in range(orders_count):
         machine_type = random.choice(machines)
         pipe_type = "braided" if machine_type.startswith("braided") else "garden"
-        order = Order(
-            client_name=f"StressClient_{idx + 1}",
-            quantity_kgs=0,
-            machine_type=machine_type,
-            color=random.choice(colors),
-            coating_type=None,
-            design=None,
-            resin_amount=0,
-            cpw_amount=0,
-            dpp_amount=0,
-            size_inches=random.choice(braided_sizes if pipe_type == "braided" else garden_sizes),
-            expected_delivery=today + timedelta(days=random.randint(1, 6)),
-            completed=False,
-        )
-        db.session.add(order)
-        db.session.flush()
+        order_payload = {
+            "client_name": f"StressClient_{idx + 1}",
+            "quantity_kgs": 0,
+            "machine_type": machine_type,
+            "color": random.choice(colors),
+            "coating_type": None,
+            "design": None,
+            "resin_amount": 0,
+            "cpw_amount": 0,
+            "dpp_amount": 0,
+            "size_inches": random.choice(braided_sizes if pipe_type == "braided" else garden_sizes),
+            "expected_delivery": today + timedelta(days=random.randint(1, 6)),
+            "completed": False,
+        }
+        order_id = store.create_order(order_payload, [])
 
         group_count = random.randint(min_lines_per_order, max_lines_per_order)
         order_total = 0.0
@@ -140,47 +141,44 @@ def generate_schedule_stress_data_impl(
             quantity_kgs = round(quantity_pcs * weight_per_piece, 2)
             length = random.choice(["30", "36", "40", "45"])
 
-            line = OrderLine(
-                order_id=order.id,
-                pipe_type=pipe_type,
-                machine_type=machine_type if pipe_type == "garden" else random.choice(["braided_1", "braided_2"]),
-                color=order.color,
-                length=length,
-                coating_type=coating_type,
-                design=design,
-                quantity_pcs=quantity_pcs,
-                weight_per_piece_kg=weight_per_piece,
-                resin_amount=0,
-                cpw_amount=0,
-                dpp_amount=0,
-                size_inches=size_inches,
-                quantity_kgs=quantity_kgs,
-                expected_delivery=order.expected_delivery,
-                completed=False,
-            )
-            db.session.add(line)
+            store.update_order(order_id, {
+                **order_payload,
+                "quantity_kgs": round(order_total + quantity_kgs, 2),
+                "coating_type": coating_type if pipe_type == "garden" else None,
+                "design": design if pipe_type == "garden" else None,
+            }, [
+                {
+                    "pipe_type": pipe_type,
+                    "machine_type": machine_type if pipe_type == "garden" else random.choice(["braided_1", "braided_2"]),
+                    "color": order_payload["color"],
+                    "length": length,
+                    "coating_type": coating_type,
+                    "design": design,
+                    "quantity_pcs": quantity_pcs,
+                    "weight_per_piece_kg": weight_per_piece,
+                    "resin_amount": 0,
+                    "cpw_amount": 0,
+                    "dpp_amount": 0,
+                    "size_inches": size_inches,
+                    "quantity_kgs": quantity_kgs,
+                    "expected_delivery": order_payload["expected_delivery"],
+                    "completed": False,
+                }
+            ])
             order_total += quantity_kgs
             line_count += 1
 
-        order.quantity_kgs = round(order_total, 2)
-        if pipe_type == "garden":
-            order.coating_type = coating_type
-            order.design = design
         order_count += 1
-
-    db.session.commit()
     logger.info("Generated %d stress orders and %d order lines", order_count, line_count)
     return order_count, line_count
 
 
 def clear_all_data_impl() -> int:
     """Delete all app data while respecting FK dependencies."""
-    deleted_lines = db.session.query(OrderLine).delete()
-    deleted_orders = db.session.query(Order).delete()
-    deleted_designs = db.session.query(Design).delete()
-    db.session.commit()
-    logger.info("Deleted %d order lines, %d orders, %d designs", deleted_lines, deleted_orders, deleted_designs)
-    return deleted_lines + deleted_orders + deleted_designs
+    store = get_store()
+    deleted = store.clear_all_data()
+    logger.info("Deleted all records: %d", deleted)
+    return deleted
 
 
 @click.command("generate_test_orders")

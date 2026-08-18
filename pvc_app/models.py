@@ -1,4 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
 from .extensions import db
 
 
@@ -29,6 +30,7 @@ class Order(db.Model):
     size_inches = db.Column(db.String(10), nullable=False)
     expected_delivery = db.Column(db.Date, nullable=False)
     completed = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
 
     def __repr__(self) -> str:
         return f"<Order {self.id} - {self.client_name}>"
@@ -52,6 +54,7 @@ class OrderLine(db.Model):
     quantity_kgs = db.Column(db.Float, nullable=False)
     expected_delivery = db.Column(db.Date, nullable=False)
     completed = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
 
     order = db.relationship("Order", backref=db.backref("lines", cascade="all, delete-orphan"))
 

@@ -1,10 +1,11 @@
 from datetime import datetime
 from datetime import date, timedelta
-from flask import Blueprint, render_template, request, redirect, url_for
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from .extensions import db
 from .models import Order, OrderLine, Design
 from .constants import SIZES
 from .scheduling import build_production_schedule, existing_designs_by_coating
+from .store import get_store
 
 
 bp = Blueprint("main", __name__, template_folder="templates")
@@ -93,21 +94,79 @@ def _order_lines_payload(order: Order):
     return list(groups.values())
 
 
+def _designs_by_coating_from_store(store):
+    grouped = {}
+    for design in store.list_designs():
+        coating = getattr(design, "coating_type", None)
+        name = getattr(design, "name", None)
+        if coating and name:
+            grouped.setdefault(coating, set()).add(name)
+    return {k: sorted(v) for k, v in grouped.items()}
+
+
+def _sync_order_completion(order: Order) -> bool:
+    lines = list(order.lines)
+    if not lines:
+        changed = not order.completed
+        order.completed = True
+        return changed
+    new_state = all(line.completed for line in lines)
+    changed = order.completed != new_state
+    order.completed = new_state
+    return changed
+
+
+def _group_order_lines_for_view(orders):
+    def _line_kgs(line):
+        quantity_kgs = float(line.quantity_kgs or 0)
+        if quantity_kgs > 0:
+            return quantity_kgs
+        return float((line.quantity_pcs or 0) * (line.weight_per_piece_kg or 0))
+
+    grouped = {}
+    for order in orders:
+        if order.completed:
+            continue
+        for line in getattr(order, "lines", []):
+            if line.completed:
+                continue
+            if (line.machine_type or "").startswith("braided"):
+                braided_group = grouped.setdefault("braided", {})
+                size_group = braided_group.setdefault(line.size_inches or "-", {"items": [], "total_kgs": 0.0, "total_pcs": 0})
+                size_group["items"].append({"order": order, "line": line})
+                size_group["total_kgs"] += _line_kgs(line)
+                size_group["total_pcs"] += int(line.quantity_pcs or 0)
+                continue
+
+            machine = line.machine_type or ""
+            coating = line.coating_type or "Without Coating"
+            design = line.design or "-"
+            machine_group = grouped.setdefault(machine, {})
+            coating_group = machine_group.setdefault(coating, {"groups": {}, "total_kgs": 0.0, "total_pcs": 0})
+            design_group = coating_group["groups"].setdefault(design, {"items": [], "total_kgs": 0.0, "total_pcs": 0})
+            design_group["items"].append({"order": order, "line": line})
+            line_kgs = _line_kgs(line)
+            design_group["total_kgs"] += line_kgs
+            design_group["total_pcs"] += int(line.quantity_pcs or 0)
+            coating_group["total_kgs"] += line_kgs
+            coating_group["total_pcs"] += int(line.quantity_pcs or 0)
+    return grouped
+
+
 @bp.route("/")
 def dashboard():
-    orders = Order.query.filter_by(completed=False).all()
-    schedule, summary = build_production_schedule(orders)
-    total_pending = db.session.query(db.func.sum(Order.quantity_kgs)).filter_by(completed=False).scalar() or 0
-    total_completed = db.session.query(db.func.sum(Order.quantity_kgs)).filter_by(completed=True).scalar() or 0
-    total_orders = Order.query.count()
+    store = get_store(current_app)
+    orders = store.list_orders(include_completed=True, order_desc=True)
+    open_orders = [order for order in orders if not order.completed]
+    total_orders = len(open_orders)
+    total_completed_orders = 0
+    total_pending_orders = total_orders
     return render_template(
-        "production_schedule.html",
-        total_pending=total_pending,
-        total_completed=total_completed,
+        "dashboard.html",
+        orders=open_orders,
         total_orders=total_orders,
-        schedule=schedule,
-        summary=summary,
-        mk_label=lambda mk: f"{mk[0]} | {mk[1] or '-'} | {mk[2] or '-'} | {mk[3]} | {mk[4]}",
+        total_completed_orders=total_completed_orders,
+        total_pending_orders=total_pending_orders,
         page_title="Dashboard",
     )
 
@@ -122,62 +181,53 @@ def view_orders():
     sort_by = request.args.get("sort_by")
     sort_dir = request.args.get("sort_dir", "asc")
 
-    query = Order.query
+    store = get_store(current_app)
+    orders = store.list_orders(include_completed=True, order_desc=False)
 
-    # Simple filters
     if size_filter:
-        query = query.filter_by(size_inches=size_filter)
+        orders = [o for o in orders if o.size_inches == size_filter]
     if date_filter:
         try:
             date_obj = datetime.strptime(date_filter, "%Y-%m-%d").date()
-            query = query.filter_by(expected_delivery=date_obj)
+            orders = [o for o in orders if getattr(o, "expected_delivery", None) == date_obj]
         except ValueError:
             pass
     if completed_filter in ("true", "false"):
-        query = query.filter_by(completed=(completed_filter == "true"))
-
-    # Generic field filter
-    allowed_fields = {
-        "id": Order.id,
-        "client_name": Order.client_name,
-        "quantity_kgs": Order.quantity_kgs,
-        "machine_type": Order.machine_type,
-        "color": Order.color,
-        "coating_type": Order.coating_type,
-        "design": Order.design,
-        "size_inches": Order.size_inches,
-        "completed": Order.completed,
-    }
-
-    if field in allowed_fields and value not in (None, ""):
-        col = allowed_fields[field]
-        # String-like fields use ilike; numeric/date/bool use equality parsing
+        wanted = completed_filter == "true"
+        orders = [o for o in orders if bool(o.completed) == wanted]
+    if field and value not in (None, ""):
         string_fields = {"client_name", "machine_type", "color", "coating_type", "design", "size_inches"}
-        numeric_fields = {"quantity_kgs", "resin_amount", "cpw_amount", "dpp_amount", "id"}
         if field in string_fields:
-            query = query.filter(col.ilike(f"%{value}%"))
-        elif field == "completed":
-            if value.lower() in ("true", "false"):
-                query = query.filter(col == (value.lower() == "true"))
-        elif field in numeric_fields:
+            orders = [o for o in orders if value.lower() in str(getattr(o, field, "")).lower()]
+        elif field == "completed" and value.lower() in ("true", "false"):
+            orders = [o for o in orders if bool(o.completed) == (value.lower() == "true")]
+        elif field == "id":
             try:
-                num = float(value)
-                query = query.filter(col == num)
+                wanted = int(value)
+                orders = [o for o in orders if int(o.id) == wanted]
             except ValueError:
                 pass
+    if sort_by:
+        reverse = sort_dir == "desc"
+        orders.sort(key=lambda o: getattr(o, sort_by, None), reverse=reverse)
 
-    # Sorting
-    if sort_by in allowed_fields:
-        sort_col = allowed_fields[sort_by]
-        if sort_dir == "desc":
-            query = query.order_by(sort_col.desc())
-        else:
-            query = query.order_by(sort_col.asc())
-    else:
-        # default sort by id
-        query = query.order_by(Order.id.asc())
+    open_orders = [o for o in orders if not o.completed]
+    completed_orders = [o for o in orders if o.completed]
 
-    orders = query.all()
+    grouped_lines = _group_order_lines_for_view(open_orders)
+    total_grouped_kgs = 0.0
+    total_grouped_pcs = 0
+    for order in open_orders:
+        if order.completed:
+            continue
+        for line in getattr(order, "lines", []):
+            if line.completed:
+                continue
+            line_kgs = float(line.quantity_kgs or 0)
+            if line_kgs <= 0:
+                line_kgs = float((line.quantity_pcs or 0) * (line.weight_per_piece_kg or 0))
+            total_grouped_kgs += line_kgs
+            total_grouped_pcs += int(line.quantity_pcs or 0)
 
     # Data for form selects
     sort_fields = [
@@ -206,9 +256,14 @@ def view_orders():
     return render_template(
         "orders.html",
         orders=orders,
+        open_orders=open_orders,
+        completed_orders=completed_orders,
         sizes=SIZES,
         sort_fields=sort_fields,
         any_fields=any_fields,
+        grouped_lines=grouped_lines,
+        total_grouped_kgs=total_grouped_kgs,
+        total_grouped_pcs=total_grouped_pcs,
     )
 
 
@@ -216,12 +271,17 @@ def view_orders():
 def add_order():
     if request.method == "POST":
         lines = _parse_lines(request.form)
+        store = get_store(current_app)
         for line in lines:
             if line["coating_type"] and line["design"]:
-                existing = Design.query.filter_by(coating_type=line["coating_type"], name=line["design"]).first()
-                if not existing:
-                    db.session.add(Design(coating_type=line["coating_type"], name=line["design"]))
-        new_order = Order(
+                if store.backend == "sqlalchemy":
+                    existing = Design.query.filter_by(coating_type=line["coating_type"], name=line["design"]).first()
+                    if not existing:
+                        db.session.add(Design(coating_type=line["coating_type"], name=line["design"]))
+                else:
+                    if not store.designs.find_one({"coating_type": line["coating_type"], "name": line["design"]}):
+                        store.designs.insert_one({"id": store._next_id(store.designs), "coating_type": line["coating_type"], "name": line["design"]})
+        new_order_payload = dict(
             client_name=request.form["client_name"],
             quantity_kgs=sum(line["quantity_kgs"] for line in lines),
             machine_type=lines[0]["machine_type"] if lines else "fresh_garden",
@@ -235,50 +295,49 @@ def add_order():
             expected_delivery=min((line["expected_delivery"] for line in lines), default=datetime.now().date()),
             completed="completed" in request.form,
         )
-        db.session.add(new_order)
-        db.session.commit()
-        for line in lines:
-            db.session.add(OrderLine(order_id=new_order.id, completed=False, **line))
-        db.session.commit()
+        store.create_order(new_order_payload, [dict(line, completed=False) for line in lines])
         return redirect(url_for("main.view_orders"))
     return render_template(
         "add_order.html",
-        coating_designs=existing_designs_by_coating(Design.query.all()),
+        coating_designs=_designs_by_coating_from_store(get_store(current_app)),
         sizes=SIZES,
     )
 
 
 @bp.route("/edit/<int:order_id>", methods=["GET", "POST"])
 def edit_order(order_id):
-    order = Order.query.get_or_404(order_id)
+    store = get_store(current_app)
+    order = store.get_order(order_id)
     if request.method == "POST":
         lines = _parse_lines(request.form)
         for line in lines:
             if line["coating_type"] and line["design"]:
-                existing = Design.query.filter_by(coating_type=line["coating_type"], name=line["design"]).first()
-                if not existing:
-                    db.session.add(Design(coating_type=line["coating_type"], name=line["design"]))
-        order.client_name = request.form["client_name"]
-        order.quantity_kgs = sum(line["quantity_kgs"] for line in lines)
-        order.machine_type = lines[0]["machine_type"] if lines else "fresh_garden"
-        order.color = lines[0]["color"] if lines else ""
-        order.coating_type = lines[0]["coating_type"] if lines else None
-        order.design = lines[0]["design"] if lines else None
-        order.resin_amount = 0
-        order.cpw_amount = 0
-        order.dpp_amount = 0
-        order.size_inches = lines[0]["size_inches"] if lines else SIZES[0]
-        order.expected_delivery = min((line["expected_delivery"] for line in lines), default=datetime.now().date())
-        order.completed = "completed" in request.form
-        OrderLine.query.filter_by(order_id=order.id).delete()
-        for line in lines:
-            db.session.add(OrderLine(order_id=order.id, completed=False, **line))
-        db.session.commit()
+                if store.backend == "sqlalchemy":
+                    existing = Design.query.filter_by(coating_type=line["coating_type"], name=line["design"]).first()
+                    if not existing:
+                        db.session.add(Design(coating_type=line["coating_type"], name=line["design"]))
+                else:
+                    if not store.designs.find_one({"coating_type": line["coating_type"], "name": line["design"]}):
+                        store.designs.insert_one({"id": store._next_id(store.designs), "coating_type": line["coating_type"], "name": line["design"]})
+        store.update_order(order.id, {
+            "client_name": request.form["client_name"],
+            "quantity_kgs": sum(line["quantity_kgs"] for line in lines),
+            "machine_type": lines[0]["machine_type"] if lines else "fresh_garden",
+            "color": lines[0]["color"] if lines else "",
+            "coating_type": lines[0]["coating_type"] if lines else None,
+            "design": lines[0]["design"] if lines else None,
+            "resin_amount": 0,
+            "cpw_amount": 0,
+            "dpp_amount": 0,
+            "size_inches": lines[0]["size_inches"] if lines else SIZES[0],
+            "expected_delivery": min((line["expected_delivery"] for line in lines), default=datetime.now().date()),
+            "completed": "completed" in request.form,
+        }, [dict(line, completed=False) for line in lines])
         return redirect(url_for("main.view_orders"))
     return render_template(
         "edit_order.html",
         order=order,
-        coating_designs=existing_designs_by_coating(Design.query.all()),
+        coating_designs=_designs_by_coating_from_store(store),
         sizes=SIZES,
         lines=_order_lines_payload(order),
     )
@@ -286,16 +345,34 @@ def edit_order(order_id):
 
 @bp.route("/delete/<int:order_id>")
 def delete_order(order_id):
-    order = Order.query.get_or_404(order_id)
-    db.session.delete(order)
-    db.session.commit()
+    store = get_store(current_app)
+    store.delete_order(order_id)
     return redirect(url_for("main.view_orders"))
+
+
+@bp.route("/toggle-line/<int:line_id>", methods=["POST"])
+def toggle_line_completion(line_id):
+    store = get_store(current_app)
+    line_completed = store.toggle_line_completion(line_id)
+    return redirect(request.referrer or url_for("main.dashboard"))
+
+
+@bp.route("/toggle-order/<int:order_id>", methods=["POST"])
+def toggle_order_completion(order_id):
+    store = get_store(current_app)
+    completed = store.toggle_order_completion(order_id)
+    flash(
+        f"Order #{order_id} marked as {'completed' if completed else 'inactive'}.",
+        "success",
+    )
+    return redirect(request.referrer or url_for("main.dashboard"))
 
 
 @bp.route("/production_schedule")
 def production_schedule():
     orders = Order.query.filter_by(completed=False).all()
-    schedule, summary = build_production_schedule(orders)
+    include_sundays = request.args.get("include_sundays") == "1"
+    schedule, summary = build_production_schedule(orders, include_sundays=include_sundays)
 
     def mk_label(mk):
         machine, coating, design, color, size = mk
@@ -310,4 +387,33 @@ def production_schedule():
         summary=summary,
         mk_label=mk_label,
         page_title="Production Schedule",
+        include_sundays=include_sundays,
+    )
+
+
+@bp.route("/grouped-lines")
+def grouped_lines():
+    orders = Order.query.order_by(Order.completed.asc(), Order.id.asc()).all()
+    grouped_lines = _group_order_lines_for_view(orders)
+    total_pending_kgs = 0.0
+    total_pending_pcs = 0
+    for order in Order.query.all():
+        if order.completed:
+            continue
+        for line in order.lines:
+            if line.completed:
+                continue
+            line_kgs = float(line.quantity_kgs or 0)
+            if line_kgs <= 0:
+                line_kgs = float((line.quantity_pcs or 0) * (line.weight_per_piece_kg or 0))
+            total_pending_kgs += line_kgs
+            total_pending_pcs += int(line.quantity_pcs or 0)
+    return render_template(
+        "grouped_lines.html",
+        grouped_lines=grouped_lines,
+        total_orders=Order.query.count(),
+        total_lines=OrderLine.query.count(),
+        total_pending_kgs=total_pending_kgs,
+        total_pending_pcs=total_pending_pcs,
+        page_title="Grouped Lines",
     )

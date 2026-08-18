@@ -105,12 +105,11 @@ def line_items_for_scheduling(orders: List[Order]) -> List[OrderLine]:
         if _item(order, "completed"):
             continue
         for line in getattr(order, "lines", []):
-            if not line.completed:
-                items.append(line)
+            items.append(line)
     return items
 
 
-def build_production_schedule(orders: List[Order], *_, **__):
+def build_production_schedule(orders: List[Order], *_, include_sundays: bool = False, **__):
     if not orders:
         return [], {}
 
@@ -146,6 +145,9 @@ def build_production_schedule(orders: List[Order], *_, **__):
         return all(v <= 1e-9 for v in remaining.values())
 
     while not all_done():
+        if not include_sundays and current_day.weekday() == 6:
+            current_day = current_day + timedelta(days=1)
+            continue
         day_plan = {"day": current_day, "shifts": [], "batches": [], "total_kgs": 0.0}
         for shift_name, shift_hours, is_night in (("day", DAY_SHIFT_HOURS, False), ("night", NIGHT_SHIFT_HOURS, True)):
             shift_plan = {"shift": shift_name, "machines": [], "total_kgs": 0.0}
@@ -153,7 +155,10 @@ def build_production_schedule(orders: List[Order], *_, **__):
             for machine in ALL_MACHINES:
                 if all_done():
                     break
-                active = [o for o in buckets[machine] if remaining[o.id] > 1e-9]
+                if machine in BRAIDED_MACHINES:
+                    active = [o for o in pending if _item(o, "machine_type") in BRAIDED_MACHINES and remaining[o.id] > 1e-9]
+                else:
+                    active = [o for o in buckets[machine] if remaining[o.id] > 1e-9]
                 if not active:
                     continue
                 if is_night:

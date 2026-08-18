@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="PVC Orders">
+  <rect width="192" height="192" rx="40" fill="#0b0f14"/>
+  <rect x="36" y="48" width="120" height="96" rx="20" fill="#4cc2ff"/>
+  <path d="M56 88h80M56 112h52" stroke="#0b0f14" stroke-width="12" stroke-linecap="round"/>
+</svg>
