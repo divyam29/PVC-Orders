@@ -251,7 +251,7 @@
                                 <tr class="orders-row {% if line.completed %}orders-row-muted{% endif %}">
                                   <td>#{{ order.id }}</td>
                                   <td>{{ order.client_name }}</td>
-                                  <td>{{ order.color }}</td>
+                                  <td>{{ line.color }}</td>
                                   <td>{{ line.quantity_pcs }}</td>
                                   <td>{{ line.length or '-' }}</td>
                                   <td>{{ "%.2f"|format(line.quantity_kgs) }} kgs</td>
@@ -308,7 +308,7 @@
                                       <tr class="orders-row {% if line.completed %}orders-row-muted{% endif %}">
                                         <td>#{{ order.id }}</td>
                                         <td>{{ order.client_name }}</td>
-                                        <td>{{ order.color }}</td>
+                                        <td>{{ line.color }}</td>
                                         <td>{{ line.size_inches }}</td>
                                         <td>{{ line.quantity_pcs }}</td>
                                         <td>{{ line.length or '-' }}</td>
