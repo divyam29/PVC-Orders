@@ -50,6 +50,7 @@
                   <th>Pipe Type</th>
                   <th>Machine</th>
                   <th>Color</th>
+                  <th>Brand</th>
                   <th>Coating</th>
                   <th>Design</th>
                   <th>Size</th>
@@ -66,6 +67,7 @@
                   <td>{{ line.pipe_type }}</td>
                   <td>{{ line.machine_type }}</td>
                   <td>{{ line.color }}</td>
+                  <td>{{ line.brand_name or '-' }}</td>
                   <td>{{ line.coating_type or '-' }}</td>
                   <td class="order-detail-design">{{ line.design or '-' }}</td>
                   <td>{{ line.size_inches }}</td>

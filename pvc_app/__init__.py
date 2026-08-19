@@ -83,9 +83,10 @@ def _sync_sqlite_schema():
         alterations.append("ALTER TABLE \"order\" ADD COLUMN design VARCHAR(120)")
     if "created_at" not in columns:
         alterations.append("ALTER TABLE \"order\" ADD COLUMN created_at DATETIME")
-
     if "order_line" in existing_tables:
         line_columns = {col["name"] for col in inspector.get_columns("order_line")}
+        if "brand_name" not in line_columns:
+            alterations.append("ALTER TABLE order_line ADD COLUMN brand_name VARCHAR(100) DEFAULT '' NOT NULL")
         if "length" not in line_columns:
             alterations.append("ALTER TABLE order_line ADD COLUMN length VARCHAR(50)")
         if "quantity_pcs" not in line_columns:

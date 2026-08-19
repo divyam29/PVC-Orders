@@ -72,6 +72,7 @@ def _parse_lines(form):
         if not pipe_type:
             continue
         color = (form.get(f"color_{idx}") or "").strip()
+        brand_name = (form.get(f"brand_name_{idx}") or "").strip()
         machine_type = (form.get(f"machine_type_{idx}") or "").strip() or "fresh_garden"
         coating_type = (form.get(f"coating_type_{idx}") or "").strip() or "Without Coating"
         design = (form.get(f"design_{idx}") or "").strip() or None
@@ -91,6 +92,7 @@ def _parse_lines(form):
                 "pipe_type": pipe_type,
                 "machine_type": effective_machine,
                 "color": color,
+                "brand_name": brand_name,
                 "length": length,
                 "coating_type": coating_type,
                 "design": design,
@@ -110,10 +112,11 @@ def _order_lines_payload(order: Order):
     groups = {}
     for idx, line in enumerate(order.lines):
         group = groups.setdefault(
-            (line.pipe_type, line.color, line.machine_type, line.coating_type or "", line.design or ""),
+            (line.pipe_type, line.color, getattr(line, "brand_name", "") or "", line.machine_type, line.coating_type or "", line.design or ""),
             {
                 "pipe_type": line.pipe_type,
                 "color": line.color,
+                "brand_name": getattr(line, "brand_name", "") or "",
                 "machine_type": line.machine_type,
                 "coating_type": line.coating_type or "Without Coating",
                 "design": line.design or "",
@@ -240,7 +243,7 @@ def view_orders():
         wanted = completed_filter == "true"
         orders = [o for o in orders if bool(o.completed) == wanted]
     if field and value not in (None, ""):
-        string_fields = {"client_name", "machine_type", "color", "coating_type", "design", "size_inches"}
+        string_fields = {"client_name", "machine_type", "color", "brand_name", "coating_type", "design", "size_inches"}
         if field in string_fields:
             orders = [o for o in orders if value.lower() in str(getattr(o, field, "")).lower()]
         elif field == "completed" and value.lower() in ("true", "false"):
@@ -280,6 +283,7 @@ def view_orders():
         ("quantity_kgs", "Quantity (kgs)"),
         ("machine_type", "Machine"),
         ("color", "Color"),
+        ("brand_name", "Brand"),
         ("coating_type", "Coating Type"),
         ("design", "Design"),
         ("size_inches", "Size"),
@@ -288,6 +292,7 @@ def view_orders():
     any_fields = [
         ("client_name", "Client"),
         ("machine_type", "Machine"),
+        ("brand_name", "Brand"),
         ("color", "Color"),
         ("coating_type", "Coating Type"),
         ("design", "Design"),

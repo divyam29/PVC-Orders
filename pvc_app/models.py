@@ -42,6 +42,7 @@ class OrderLine(db.Model):
     pipe_type = db.Column(db.String(40), nullable=False, default="garden")
     machine_type = db.Column(db.String(40), nullable=False, index=True)
     color = db.Column(db.String(50), nullable=False)
+    brand_name = db.Column(db.String(100), nullable=False, default="")
     length = db.Column(db.String(50), nullable=True)
     coating_type = db.Column(db.String(50), nullable=True, index=True)
     design = db.Column(db.String(120), nullable=True, index=True)

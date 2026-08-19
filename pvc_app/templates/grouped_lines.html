@@ -52,6 +52,7 @@
                           <th>Order</th>
                           <th>Client</th>
                           <th>Color</th>
+                          <th>Brand</th>
                           <th>PCS</th>
                           <th>Length</th>
                           <th>Total</th>
@@ -65,7 +66,8 @@
                           <tr class="{% if line.completed %}opacity-50 table-secondary{% endif %}">
                             <td>#{{ order.id }}</td>
                             <td>{{ order.client_name }}</td>
-                            <td>{{ order.color }}</td>
+                            <td>{{ line.color }}</td>
+                            <td>{{ line.brand_name or '-' }}</td>
                             <td>{{ line.quantity_pcs }}</td>
                             <td>{{ line.length or '-' }}</td>
                             <td>{{ "%.2f"|format(line.quantity_kgs) }} kgs</td>
@@ -116,6 +118,7 @@
                                 <th>Order</th>
                                 <th>Client</th>
                                 <th>Color</th>
+                                <th>Brand</th>
                                 <th>Size</th>
                                 <th>PCS</th>
                                 <th>Length</th>
@@ -130,7 +133,8 @@
                                 <tr class="{% if line.completed %}opacity-50 table-secondary{% endif %}">
                                   <td>#{{ order.id }}</td>
                                   <td>{{ order.client_name }}</td>
-                                  <td>{{ order.color }}</td>
+                                  <td>{{ line.color }}</td>
+                                  <td>{{ line.brand_name or '-' }}</td>
                                   <td>{{ line.size_inches }}</td>
                                   <td>{{ line.quantity_pcs }}</td>
                                   <td>{{ line.length or '-' }}</td>

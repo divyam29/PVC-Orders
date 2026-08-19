@@ -13,7 +13,7 @@
           {% endfor %}
         </datalist>
       </div>
-      <div class="col-md-6 d-flex align-items-end justify-content-end">
+      <div class="col-md-3 d-flex align-items-end justify-content-end">
         <button type="button" class="btn btn-secondary" id="addOrderTypeBtn">Add Order Type</button>
       </div>
     </div>
@@ -43,6 +43,10 @@
       <div class="col-md-3">
         <label class="form-label">Color</label>
         <input type="text" class="form-control color-field" name="color_0" required>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Brand Name</label>
+        <input type="text" class="form-control brand-name-field" name="brand_name_0">
       </div>
       <div class="col-md-3 garden-only">
         <label class="form-label">Machine</label>
@@ -129,6 +133,7 @@
       row.querySelector(".order-index").textContent = i + 1;
       row.querySelector(".pipe-type").name = `pipe_type_${i}`;
       row.querySelector(".color-field").name = `color_${i}`;
+      row.querySelector(".brand-name-field").name = `brand_name_${i}`;
       row.querySelector(".machine-type").name = `machine_type_${i}`;
       row.querySelector(".coating-type").name = `coating_type_${i}`;
       row.querySelector(".design-field").name = `design_${i}`;
@@ -175,6 +180,7 @@
     if (prefill) {
       row.querySelector(".pipe-type").value = prefill.pipe_type || "garden";
       row.querySelector(".color-field").value = prefill.color || "";
+      row.querySelector(".brand-name-field").value = prefill.brand_name || "";
       row.querySelector(".machine-type").value = prefill.machine_type || "fresh_garden";
       row.querySelector(".coating-type").value = prefill.coating_type || "Without Coating";
       row.querySelector(".design-field").value = prefill.design || "";
