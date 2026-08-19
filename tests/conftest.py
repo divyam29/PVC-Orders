@@ -35,6 +35,8 @@ def app():
         "TESTING": True,
         "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
         "SQLALCHEMY_TRACK_MODIFICATIONS": False,
+        "AUTH_USERNAME": "test-user",
+        "AUTH_PASSWORD": "test-password",
     })
     with app.app_context():
         db.create_all()
@@ -45,7 +47,9 @@ def app():
 
 @pytest.fixture
 def client(app):
-    return app.test_client()
+    client = app.test_client()
+    client.post("/login", data={"username": "test-user", "password": "test-password"})
+    return client
 
 
 @pytest.fixture

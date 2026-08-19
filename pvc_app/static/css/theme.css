@@ -40,6 +40,8 @@ body{
 .navbar .nav-link:hover, .navbar .nav-link.active{ color: var(--accent); }
 
 .container{ max-width: 1100px; }
+.login-shell{ min-height: calc(100vh - 3rem); display:flex; align-items:center; justify-content:center; padding:2rem 0; }
+.login-card{ width:min(100%, 460px); }
 .card{ background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); --bs-card-bg: var(--panel); --bs-card-color: var(--text); }
 .card-header{
   background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));

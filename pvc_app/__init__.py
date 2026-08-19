@@ -1,4 +1,5 @@
-from flask import Flask
+from flask import Flask, redirect, request, session, url_for
+import hmac
 import os
 import tempfile
 from sqlalchemy import inspect, text
@@ -19,6 +20,8 @@ def create_app(test_config: dict | None = None):
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///pvc.db"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["MONGODB_URI"] = os.environ.get("MONGODB_URI")
+    app.config["AUTH_USERNAME"] = os.environ.get("AUTH_USERNAME")
+    app.config["AUTH_PASSWORD"] = os.environ.get("AUTH_PASSWORD")
     if test_config:
         app.config.update(test_config)
     if test_config and test_config.get("MONGODB_URI"):
@@ -32,6 +35,14 @@ def create_app(test_config: dict | None = None):
 
     # blueprints / urls
     register_urls(app)
+
+    @app.before_request
+    def require_login():
+        if request.endpoint in {"main.login", "main.logout", "static"}:
+            return None
+        if not session.get("authenticated"):
+            return redirect(url_for("main.login", next=request.path))
+        return None
 
     # CLI
     app.cli.add_command(generate_test_orders)

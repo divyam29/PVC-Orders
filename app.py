@@ -1,3 +1,7 @@
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from pvc_app import create_app
 
 # Flask app factory entry point

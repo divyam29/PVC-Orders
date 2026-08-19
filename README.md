@@ -52,6 +52,8 @@ If you use a requirements/lock file, install that instead. Example quick setup:
 
 ## Configuration
 - Database: SQLite file pvc.db in the project root by default
+- Authentication: set `AUTH_USERNAME` and `AUTH_PASSWORD` in `.env` before starting the app
+- Session signing: set `SECRET_KEY` to a long random value
 - Daily capacity: 40,000 kg/day (override via query parameter on /production_schedule?capacity=35000)
 
 create_app accepts overrides (used by tests), e.g.:
@@ -72,12 +74,14 @@ Or run directly:
 App will be available at http://127.0.0.1:5000
 
 ### Routes
+- /login — Sign in
 - / — Dashboard
 - /orders — View orders with filters
 - /add — Add order (GET/POST)
 - /edit/<id> — Edit order
 - /delete/<id> — Delete order
 - /production_schedule — View computed schedule (optional ?capacity=NNN)
+- /logout — Sign out (POST)
 
 ---
 

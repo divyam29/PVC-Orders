@@ -1,6 +1,7 @@
 from datetime import datetime
 from datetime import date, timedelta
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
+import hmac
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, session
 from .extensions import db
 from .models import Order, OrderLine, Design
 from .constants import SIZES
@@ -9,6 +10,35 @@ from .store import get_store
 
 
 bp = Blueprint("main", __name__, template_folder="templates")
+
+
+@bp.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
+        configured_username = current_app.config.get("AUTH_USERNAME") or ""
+        configured_password = current_app.config.get("AUTH_PASSWORD") or ""
+        if (
+            configured_username
+            and configured_password
+            and hmac.compare_digest(username, configured_username)
+            and hmac.compare_digest(password, configured_password)
+        ):
+            session.clear()
+            session["authenticated"] = True
+            next_url = request.args.get("next", "")
+            if not next_url.startswith("/") or next_url.startswith("//"):
+                next_url = url_for("main.dashboard")
+            return redirect(next_url)
+        flash("Invalid username or password.", "danger")
+    return render_template("login.html", page_title="Sign in")
+
+
+@bp.route("/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return redirect(url_for("main.login"))
 
 
 def _auto_machine_for_line(pipe_type: str, preferred_machine: str | None, size_inches: str) -> str:

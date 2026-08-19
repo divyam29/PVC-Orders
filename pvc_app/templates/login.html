@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="login-shell">
+  <div class="card login-card">
+    <div class="card-body p-4 p-md-5">
+      <div class="utility-bar mb-4">
+        <div>
+          <div class="small text-uppercase text-secondary">PVC Orders</div>
+          <h1 class="h3 mb-0">Welcome back</h1>
+        </div>
+        <span class="dashboard-badge dashboard-badge-info">Secure access</span>
+      </div>
+      <p class="text-secondary mb-4">Sign in to manage orders and production.</p>
+      <form method="POST">
+        <div class="mb-3">
+          <label class="form-label" for="username">Username</label>
+          <input class="form-control" id="username" name="username" type="text" autocomplete="username" required autofocus>
+        </div>
+        <div class="mb-4">
+          <label class="form-label" for="password">Password</label>
+          <input class="form-control" id="password" name="password" type="password" autocomplete="current-password" required>
+        </div>
+        <button class="btn btn-primary w-100" type="submit">Sign in</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
