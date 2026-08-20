@@ -97,7 +97,7 @@ def generate_schedule_stress_data_impl(
         "Double Coating": ["Design F", "Design G"],
     }
     machines = ["fresh_garden", "recycled_garden", "braided_1", "braided_2"]
-    braided_sizes = ["6mm", "8mm", "10mm", '1/2"', '3/4"', '1"', '1 1/4"', '1 1/2"']
+    braided_sizes = ["6mm", "8mm", "10mm", "11mm", '1/2"', '3/4"', "23mm", '1"', '1 1/4"', '1 1/2"']
     garden_sizes = sizes
 
     order_count = 0

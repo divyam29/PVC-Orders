@@ -109,9 +109,8 @@ class SqlAlchemyStore(BaseStore):
     def toggle_order_completion(self, order_id: int) -> bool:
         order = self.get_order(order_id)
         order.completed = not order.completed
-        if not order.completed:
-            for line in order.lines:
-                line.completed = False
+        for line in order.lines:
+            line.completed = order.completed
         db.session.commit()
         return order.completed
 
@@ -284,8 +283,7 @@ class MongoStore(BaseStore):
         order = self.orders.find_one({"id": order_id}) or {}
         new_state = not bool(order.get("completed"))
         self.orders.update_one({"id": order_id}, {"$set": {"completed": new_state}})
-        if not new_state:
-            self.order_lines.update_many({"order_id": order_id}, {"$set": {"completed": False}})
+        self.order_lines.update_many({"order_id": order_id}, {"$set": {"completed": new_state}})
         return new_state
 
     def toggle_line_completion(self, line_id: int) -> bool:
