@@ -57,6 +57,9 @@ class BaseStore:
     def toggle_line_completion(self, line_id: int) -> bool:
         raise NotImplementedError
 
+    def complete_order_lines(self, order_id: int, line_ids: list[int]) -> int:
+        raise NotImplementedError
+
     def list_designs(self):
         raise NotImplementedError
 
@@ -121,6 +124,19 @@ class SqlAlchemyStore(BaseStore):
         order.completed = bool(order.lines) and all(l.completed for l in order.lines)
         db.session.commit()
         return line.completed
+
+    def complete_order_lines(self, order_id: int, line_ids: list[int]) -> int:
+        order = self.get_order(order_id)
+        selected_ids = {int(line_id) for line_id in line_ids}
+        order_line_ids = {line.id for line in order.lines}
+        if not selected_ids.issubset(order_line_ids):
+            raise ValueError("Selected lines do not belong to this order")
+        for line in order.lines:
+            if line.id in selected_ids:
+                line.completed = True
+        order.completed = bool(order.lines) and all(line.completed for line in order.lines)
+        db.session.commit()
+        return len(selected_ids)
 
     def list_designs(self):
         return Design.query.all()
@@ -297,6 +313,24 @@ class MongoStore(BaseStore):
             order_completed = bool(lines) and all(bool(l.get("completed")) for l in lines)
             self.orders.update_one({"id": order_id}, {"$set": {"completed": order_completed}})
         return new_state
+
+    def complete_order_lines(self, order_id: int, line_ids: list[int]) -> int:
+        self._ensure_indexes()
+        selected_ids = {int(line_id) for line_id in line_ids}
+        lines = list(self.order_lines.find({"order_id": order_id}, {"id": 1, "completed": 1}))
+        order_line_ids = {line["id"] for line in lines}
+        if not selected_ids.issubset(order_line_ids):
+            raise ValueError("Selected lines do not belong to this order")
+        if selected_ids:
+            self.order_lines.update_many(
+                {"order_id": order_id, "id": {"$in": list(selected_ids)}},
+                {"$set": {"completed": True}},
+            )
+        order_completed = bool(lines) and all(
+            line.get("completed", False) or line["id"] in selected_ids for line in lines
+        )
+        self.orders.update_one({"id": order_id}, {"$set": {"completed": order_completed}})
+        return len(selected_ids)
 
     def list_designs(self):
         self._ensure_indexes()

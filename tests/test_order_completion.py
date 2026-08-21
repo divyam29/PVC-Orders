@@ -51,10 +51,19 @@ def test_completing_order_completes_all_lines(app):
         )
         db.session.commit()
         order_id = order.id
+        line_ids = [line.id for line in order.lines]
 
     with app.app_context():
-        completed = SqlAlchemyStore().toggle_order_completion(order_id)
+        store = SqlAlchemyStore()
+        completed_count = store.complete_order_lines(order_id, [line_ids[0]])
         order = db.session.get(Order, order_id)
-        assert completed is True
+        assert completed_count == 1
+        assert order.completed is False
+        assert order.lines[0].completed is True
+        assert order.lines[1].completed is False
+
+        completed_count = store.complete_order_lines(order_id, [line_ids[1]])
+        db.session.refresh(order)
+        assert completed_count == 1
         assert order.completed is True
         assert all(line.completed for line in order.lines)

@@ -44,7 +44,7 @@
             <div class="d-flex align-items-center gap-2 flex-wrap">
               <span class="small text-muted">{{ order.color }} | {{ order.coating_type or 'Without Coating' }} | {{ order.design or '-' }}</span>
               <form method="POST" action="{{ url_for('main.toggle_order_completion', order_id=order.id) }}">
-                <button type="submit" class="btn btn-sm btn-success">Complete Order</button>
+                <button type="submit" class="btn btn-sm {% if order.completed %}btn-secondary{% else %}btn-success{% endif %}">{% if order.completed %}Reopen Order{% else %}Complete Order{% endif %}</button>
               </form>
             </div>
           </div>

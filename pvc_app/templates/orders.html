@@ -46,8 +46,8 @@
                       <strong>Order Details</strong>
                       <div class="d-flex align-items-center gap-2 flex-wrap">
                         <span class="small text-muted">{{ order.color }} | {{ order.coating_type or 'Without Coating' }} | {{ order.design or '-' }}</span>
-                        <form method="POST" action="{{ url_for('main.toggle_order_completion', order_id=order.id) }}">
-                          <button type="submit" class="btn btn-sm btn-success">Complete Order</button>
+                        <form id="complete-lines-{{ order.id }}" method="POST" action="{{ url_for('main.complete_selected_lines', order_id=order.id) }}">
+                          <button type="submit" class="btn btn-sm btn-success complete-selected-lines-btn">Complete Order</button>
                         </form>
                       </div>
                     </div>
@@ -55,6 +55,7 @@
                       <table class="table table-sm table-hover align-middle mb-0 order-detail-table">
                         <thead>
                           <tr>
+                            <th>Select</th>
                             <th>Pipe Type</th>
                             <th>Machine</th>
                             <th>Color</th>
@@ -72,6 +73,9 @@
                         <tbody>
                           {% for line in order.lines %}
                           <tr class="orders-row {% if line.completed %}orders-row-muted{% endif %}">
+                            <td>
+                              <input type="checkbox" name="line_ids" value="{{ line.id }}" form="complete-lines-{{ order.id }}"{% if line.completed %} disabled{% endif %}>
+                            </td>
                             <td>{{ line.pipe_type }}</td>
                             <td>{{ line.machine_type }}</td>
                             <td>{{ line.color }}</td>
@@ -346,6 +350,15 @@
 </div>
 
 <script>
+  document.querySelectorAll("[id^='complete-lines-']").forEach(form => {
+    const button = form.querySelector(".complete-selected-lines-btn");
+    const checkboxes = document.querySelectorAll(`input[form="${form.id}"]`);
+    const updateButton = () => {
+      const selected = [...checkboxes].filter(checkbox => checkbox.checked).length;
+      button.textContent = selected ? "Complete Selected Items" : "Complete Order";
+    };
+    checkboxes.forEach(checkbox => checkbox.addEventListener("change", updateButton));
+  });
   document.querySelectorAll(".toggle-order-details").forEach(btn => {
     const target = document.querySelector(btn.getAttribute("data-bs-target"));
     if (!target) return;

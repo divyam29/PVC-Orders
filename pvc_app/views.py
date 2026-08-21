@@ -204,13 +204,12 @@ def _group_order_lines_for_view(orders):
 def dashboard():
     store = get_store(current_app)
     orders = store.list_orders(include_completed=True, order_desc=True)
-    open_orders = [order for order in orders if not order.completed]
-    total_orders = len(open_orders)
-    total_completed_orders = 0
-    total_pending_orders = total_orders
+    total_orders = len(orders)
+    total_completed_orders = sum(1 for order in orders if order.completed)
+    total_pending_orders = total_orders - total_completed_orders
     return render_template(
         "dashboard.html",
-        orders=open_orders,
+        orders=[order for order in orders if not order.completed],
         total_orders=total_orders,
         total_completed_orders=total_completed_orders,
         total_pending_orders=total_pending_orders,
@@ -412,6 +411,26 @@ def toggle_line_completion(line_id):
     store = get_store(current_app)
     line_completed = store.toggle_line_completion(line_id)
     return redirect(request.referrer or url_for("main.dashboard"))
+
+
+@bp.route("/complete-lines/<int:order_id>", methods=["POST"])
+def complete_selected_lines(order_id):
+    store = get_store(current_app)
+    line_ids = request.form.getlist("line_ids")
+    if not line_ids:
+        completed = store.toggle_order_completion(order_id)
+        flash(
+            f"Order #{order_id} marked as {'completed' if completed else 'inactive'}.",
+            "success",
+        )
+        return redirect(request.referrer or url_for("main.view_orders"))
+    try:
+        completed_count = store.complete_order_lines(order_id, line_ids)
+    except (TypeError, ValueError):
+        flash("Selected lines do not belong to this order.", "danger")
+    else:
+        flash(f"{completed_count} selected order line(s) marked as completed.", "success")
+    return redirect(request.referrer or url_for("main.view_orders"))
 
 
 @bp.route("/toggle-order/<int:order_id>", methods=["POST"])
