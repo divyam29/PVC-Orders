@@ -399,7 +399,7 @@ def edit_order(order_id):
     )
 
 
-@bp.route("/delete/<int:order_id>")
+@bp.route("/delete/<int:order_id>", methods=["POST"])
 def delete_order(order_id):
     store = get_store(current_app)
     store.delete_order(order_id)

@@ -3,9 +3,13 @@ import hmac
 import os
 import tempfile
 from sqlalchemy import inspect, text
+from flask_wtf.csrf import CSRFProtect
 from .extensions import db
 from .urls import register_urls
 from .cli import clear_all_data, generate_schedule_stress_data, generate_test_orders
+
+
+csrf = CSRFProtect()
 
 
 def create_app(test_config: dict | None = None):
@@ -27,11 +31,14 @@ def create_app(test_config: dict | None = None):
     if test_config and test_config.get("MONGODB_URI"):
         app.config["MONGODB_URI"] = test_config["MONGODB_URI"]
     if not app.config.get("SECRET_KEY"):
-        app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-pvc-orders-secret-key")
+        app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
+    if not app.config["SECRET_KEY"]:
+        raise RuntimeError("SECRET_KEY must be configured")
     app.secret_key = app.config["SECRET_KEY"]
 
     # init extensions
     db.init_app(app)
+    csrf.init_app(app)
 
     # blueprints / urls
     register_urls(app)

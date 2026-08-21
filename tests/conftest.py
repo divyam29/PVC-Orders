@@ -37,6 +37,8 @@ def app():
         "SQLALCHEMY_TRACK_MODIFICATIONS": False,
         "AUTH_USERNAME": "test-user",
         "AUTH_PASSWORD": "test-password",
+        "SECRET_KEY": "test-secret-key",
+        "WTF_CSRF_ENABLED": False,
     })
     with app.app_context():
         db.create_all()

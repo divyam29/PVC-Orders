@@ -44,6 +44,7 @@
             <div class="d-flex align-items-center gap-2 flex-wrap">
               <span class="small text-muted">{{ order.color }} | {{ order.coating_type or 'Without Coating' }} | {{ order.design or '-' }}</span>
               <form method="POST" action="{{ url_for('main.toggle_order_completion', order_id=order.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-sm {% if order.completed %}btn-secondary{% else %}btn-success{% endif %}">{% if order.completed %}Reopen Order{% else %}Complete Order{% endif %}</button>
               </form>
             </div>
@@ -82,6 +83,7 @@
                   <td>{{ line.length or '-' }}</td>
                   <td>
                     <form method="POST" action="{{ url_for('main.toggle_line_completion', line_id=line.id) }}">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                       <button type="submit" class="btn btn-sm {% if line.completed %}btn-secondary{% else %}btn-success{% endif %}">
                         {% if line.completed %}Incomplete{% else %}Complete{% endif %}
                       </button>

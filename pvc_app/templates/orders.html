@@ -35,7 +35,10 @@
               <td>{{ "%.2f"|format(order.quantity_kgs) }} kgs</td>
               <td class="d-flex gap-2 flex-wrap">
                 <a href="{{ url_for('main.edit_order', order_id=order.id) }}" class="btn btn-sm btn-warning">Edit</a>
-                <a href="{{ url_for('main.delete_order', order_id=order.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this order?')">Delete</a>
+                <form method="POST" action="{{ url_for('main.delete_order', order_id=order.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this order?')">Delete</button>
+                </form>
               </td>
             </tr>
             <tr>
@@ -47,6 +50,7 @@
                       <div class="d-flex align-items-center gap-2 flex-wrap">
                         <span class="small text-muted">{{ order.color }} | {{ order.coating_type or 'Without Coating' }} | {{ order.design or '-' }}</span>
                         <form id="complete-lines-{{ order.id }}" method="POST" action="{{ url_for('main.complete_selected_lines', order_id=order.id) }}">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                           <button type="submit" class="btn btn-sm btn-success complete-selected-lines-btn">Complete Order</button>
                         </form>
                       </div>
@@ -89,6 +93,7 @@
                             <td>{{ line.length or '-' }}</td>
                             <td>
                               <form method="POST" action="{{ url_for('main.toggle_line_completion', line_id=line.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="btn btn-sm {% if line.completed %}btn-secondary{% else %}btn-success{% endif %}">
                                   {% if line.completed %}Incomplete{% else %}Complete{% endif %}
                                 </button>
@@ -182,6 +187,7 @@
                         <td>{{ line.length or '-' }}</td>
                         <td>
                           <form method="POST" action="{{ url_for('main.toggle_line_completion', line_id=line.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-sm btn-secondary">Incomplete</button>
                           </form>
                         </td>

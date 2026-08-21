@@ -125,6 +125,7 @@
                                   </td>
                                   <td>
                                     <form method="POST" action="{{ url_for('main.toggle_line_completion', line_id=item.id) }}">
+                                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                       <button type="submit" class="btn btn-sm {% if item.completed %}btn-secondary{% else %}btn-primary{% endif %}">
                                         {% if item.completed %}Mark Incomplete{% else %}Complete{% endif %}
                                       </button>
